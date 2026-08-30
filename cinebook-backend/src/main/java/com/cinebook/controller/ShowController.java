@@ -65,4 +65,16 @@ public class ShowController {
                 "Show and show seats generated successfully"
         ));
     }
+
+    @PostMapping("/seed-upcoming")
+    public ResponseEntity<ApiResponse<String>> seedUpcomingShows() {
+        int count = showService.seedShowsForAllMovies(7);
+        return ResponseEntity.ok(ApiResponse.ok("Successfully seeded " + count + " upcoming shows across theaters"));
+    }
+
+    @GetMapping("/seed-upcoming")
+    public ResponseEntity<ApiResponse<String>> seedUpcomingShowsGet() {
+        int count = showService.seedShowsForAllMovies(7);
+        return ResponseEntity.ok(ApiResponse.ok("Successfully seeded " + count + " upcoming shows across theaters"));
+    }
 }

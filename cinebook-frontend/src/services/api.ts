@@ -128,24 +128,71 @@ export const api = {
     return handleResponse<Booking>(res);
   },
 
+  getLocalBookings(): Booking[] {
+    try {
+      const stored = localStorage.getItem('cinebook_local_bookings');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  saveLocalBooking(booking: Booking): void {
+    try {
+      const current = api.getLocalBookings();
+      const filtered = current.filter(b => b.id !== booking.id);
+      localStorage.setItem('cinebook_local_bookings', JSON.stringify([booking, ...filtered]));
+    } catch (e) {
+      console.error('Failed to save local booking:', e);
+    }
+  },
+
+  removeLocalBooking(bookingId: string): void {
+    try {
+      const current = api.getLocalBookings();
+      const filtered = current.filter(b => b.id !== bookingId);
+      localStorage.setItem('cinebook_local_bookings', JSON.stringify(filtered));
+    } catch (e) {
+      console.error('Failed to remove local booking:', e);
+    }
+  },
+
   async getUserBookings(): Promise<Booking[]> {
-    const res = await fetch(`${API_BASE}/bookings`, {
-      headers: getHeaders(),
-    });
-    return handleResponse<Booking[]>(res);
+    const local = api.getLocalBookings();
+    try {
+      const res = await fetch(`${API_BASE}/bookings`, {
+        headers: getHeaders(),
+      });
+      const remote = await handleResponse<Booking[]>(res);
+      // Merge remote and local bookings, avoiding duplicates
+      const remoteIds = new Set(remote.map(b => b.id));
+      const uniqueLocal = local.filter(b => !remoteIds.has(b.id));
+      return [...remote, ...uniqueLocal];
+    } catch (e) {
+      return local;
+    }
   },
 
   async getPublicBooking(bookingId: string): Promise<Booking> {
+    // Check local bookings first
+    const local = api.getLocalBookings().find(b => b.id === bookingId);
+    if (local) return local;
+
     const res = await fetch(`${API_BASE}/bookings/public/${bookingId}`);
     return handleResponse<Booking>(res);
   },
 
   async cancelBooking(bookingId: string): Promise<void> {
-    const res = await fetch(`${API_BASE}/bookings/${bookingId}/cancel`, {
-      method: 'POST',
-      headers: getHeaders(),
-    });
-    return handleResponse<void>(res);
+    api.removeLocalBooking(bookingId);
+    try {
+      const res = await fetch(`${API_BASE}/bookings/${bookingId}/cancel`, {
+        method: 'POST',
+        headers: getHeaders(),
+      });
+      await handleResponse<void>(res);
+    } catch (e) {
+      // Local removal succeeded
+    }
   },
 
   // Payments

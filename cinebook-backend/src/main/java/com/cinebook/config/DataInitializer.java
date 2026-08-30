@@ -41,10 +41,10 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        if (movieRepository.count() > 0 && showRepository.count() > 0) {
-            log.info("CineBook catalog already initialized with {} movies and {} active shows across theaters. Skipping startup seeding.",
-                    movieRepository.count(), showRepository.count());
-            return;
+        boolean needsCatalog = (movieRepository.count() == 0 || theaterRepository.count() == 0);
+        if (!needsCatalog) {
+            log.info("CineBook catalog already initialized with {} movies across theaters. Checking upcoming shows...",
+                    movieRepository.count());
         }
 
         // 1. Ensure theaters exist across all 18 major Indian cities
@@ -198,7 +198,7 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void seedMultiDateShows() {
-        if (showRepository.count() > 0) return;
+        if (showRepository.findUpcomingShows(LocalDateTime.now()).size() >= 10) return;
 
         List<Movie> movies = movieRepository.findAll();
         List<Screen> screens = screenRepository.findAll();
@@ -208,10 +208,7 @@ public class DataInitializer implements CommandLineRunner {
         int[] showTimesHours = {10, 14, 18, 21}; // 10:00 AM, 02:00 PM, 06:00 PM, 09:00 PM
 
         for (Screen screen : screens) {
-            long existingShowCount = showRepository.countByScreenId(screen.getId());
-            if (existingShowCount > 0) continue;
-
-            for (int dayOffset = 0; dayOffset < 5; dayOffset++) {
+            for (int dayOffset = 0; dayOffset < 7; dayOffset++) {
                 LocalDate showDate = today.plusDays(dayOffset);
 
                 for (int mIdx = 0; mIdx < Math.min(movies.size(), showTimesHours.length); mIdx++) {
