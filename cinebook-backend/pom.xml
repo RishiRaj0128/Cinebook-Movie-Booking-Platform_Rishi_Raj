@@ -23,7 +23,7 @@
     <start-class>com.cinebook.CinebookApplication</start-class>
     <jjwt.version>0.12.6</jjwt.version>
     <mapstruct.version>1.6.3</mapstruct.version>
-    <lombok.version>1.18.36</lombok.version>
+    <lombok.version>1.18.48</lombok.version>
     <springdoc.version>2.6.0</springdoc.version>
     <zxing.version>3.5.3</zxing.version>
     <razorpay.version>1.4.5</razorpay.version>
