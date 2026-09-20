@@ -1,4 +1,5 @@
 import { AuthResponse, Booking, HoldSeatsResponse, Movie, PaymentOrderResponse, Show, ShowSeat, Theater } from '../types';
+import { FALLBACK_MOVIES } from './fallbackMovies';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://cinebook-api-6cw7.onrender.com/api';
 
@@ -63,23 +64,66 @@ export const api = {
     const params = new URLSearchParams();
     if (genre) params.append('genre', genre);
     if (language) params.append('language', language);
-    const res = await fetch(`${API_BASE}/movies?${params.toString()}`);
-    return handleResponse<Movie[]>(res);
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
+      const res = await fetch(`${API_BASE}/movies?${params.toString()}`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      const data = await handleResponse<Movie[]>(res);
+      if (data && data.length > 0) {
+        try { localStorage.setItem('cinebook_cached_movies', JSON.stringify(data)); } catch {}
+        return data;
+      }
+    } catch {
+      // Backend cold starting or offline
+    }
+
+    // Try cached movies from previous load
+    try {
+      const cached = localStorage.getItem('cinebook_cached_movies');
+      if (cached) {
+        let list: Movie[] = JSON.parse(cached);
+        if (genre) list = list.filter(m => m.genre.toLowerCase().includes(genre.toLowerCase()));
+        if (language) list = list.filter(m => m.language?.toLowerCase() === language.toLowerCase());
+        if (list.length > 0) return list;
+      }
+    } catch {}
+
+    // Return instant fallback catalog
+    let fallback = [...FALLBACK_MOVIES];
+    if (genre) fallback = fallback.filter(m => m.genre.toLowerCase().includes(genre.toLowerCase()));
+    if (language) fallback = fallback.filter(m => m.language.toLowerCase() === language.toLowerCase());
+    return fallback;
   },
 
   async getMovieById(id: string): Promise<Movie> {
-    const res = await fetch(`${API_BASE}/movies/${id}`);
-    return handleResponse<Movie>(res);
+    try {
+      const res = await fetch(`${API_BASE}/movies/${id}`);
+      return await handleResponse<Movie>(res);
+    } catch {
+      const found = FALLBACK_MOVIES.find(m => m.id === id);
+      if (found) return found;
+      throw new Error('Movie not found');
+    }
   },
 
   async getGenres(): Promise<string[]> {
-    const res = await fetch(`${API_BASE}/movies/genres`);
-    return handleResponse<string[]>(res);
+    try {
+      const res = await fetch(`${API_BASE}/movies/genres`);
+      const genres = await handleResponse<string[]>(res);
+      if (genres && genres.length > 0) return genres;
+    } catch {}
+    return ['Action', 'Drama', 'Sci-Fi', 'Comedy', 'Thriller', 'Horror', 'Adventure', 'Fantasy'];
   },
 
   async getLanguages(): Promise<string[]> {
-    const res = await fetch(`${API_BASE}/movies/languages`);
-    return handleResponse<string[]>(res);
+    try {
+      const res = await fetch(`${API_BASE}/movies/languages`);
+      const langs = await handleResponse<string[]>(res);
+      if (langs && langs.length > 0) return langs;
+    } catch {}
+    return ['Hindi', 'Telugu', 'Tamil', 'English'];
   },
 
   // Theaters & Shows

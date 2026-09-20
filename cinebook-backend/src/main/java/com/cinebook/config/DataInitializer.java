@@ -3,12 +3,15 @@ package com.cinebook.config;
 import com.cinebook.domain.entity.*;
 import com.cinebook.domain.enums.SeatStatus;
 import com.cinebook.domain.enums.SeatType;
+import com.cinebook.domain.enums.UserRole;
 import com.cinebook.domain.repository.*;
 import com.cinebook.service.TmdbService;
 import com.cinebook.util.PricingUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,11 +39,38 @@ public class DataInitializer implements CommandLineRunner {
     private final SeatRepository      seatRepository;
     private final ShowRepository      showRepository;
     private final ShowSeatRepository  showSeatRepository;
+    private final UserRepository      userRepository;
+    private final PasswordEncoder     passwordEncoder;
     private final TmdbService         tmdbService;
     private final PricingUtil         pricingUtil;
 
+    @Value("${tmdb.api-key:}")
+    private String tmdbApiKey;
+
     @Override
     public void run(String... args) throws Exception {
+        // 0. Ensure default users exist for seamless local testing
+        if (userRepository.count() == 0) {
+            userRepository.save(User.builder()
+                    .email("admin@cinebook.com")
+                    .password(passwordEncoder.encode("admin123"))
+                    .fullName("CineBook Admin")
+                    .phone("9876543210")
+                    .role(UserRole.ADMIN)
+                    .enabled(true)
+                    .build());
+
+            userRepository.save(User.builder()
+                    .email("user@cinebook.com")
+                    .password(passwordEncoder.encode("user123"))
+                    .fullName("Demo User")
+                    .phone("9876543211")
+                    .role(UserRole.CUSTOMER)
+                    .enabled(true)
+                    .build());
+            log.info("Initialized default users: admin@cinebook.com and user@cinebook.com");
+        }
+
         boolean needsCatalog = (movieRepository.count() == 0 || theaterRepository.count() == 0);
         if (!needsCatalog) {
             log.info("CineBook catalog already initialized with {} movies across theaters. Checking upcoming shows...",
@@ -85,40 +115,30 @@ public class DataInitializer implements CommandLineRunner {
             }
         }
 
-        // 2. Fetch & sync popular Indian & Global movies from TMDB API
+        // 2. Fetch & sync popular Indian & Global movies from TMDB API or Fallback
         if (movieRepository.count() == 0) {
-            log.info("Database empty: Syncing Indian (Bollywood/Tollywood/Kollywood) and Global movies from TMDB API...");
-            try {
-                // Import iconic blockbusters for Telugu, Tamil, Kannada, Malayalam, and Hindi
-                List<Integer> indianTmdbIds = List.of(
-                    579974,  // RRR (Telugu)
-                    1013444, // Kalki 2898 AD (Telugu)
-                    792307,  // Pushpa 2: The Rule (Telugu)
-                    492207,  // Baahubali 2 (Telugu)
-                    934632,  // Leo (Tamil)
-                    934433,  // Jailer (Tamil)
-                    856289,  // Ponniyin Selvan: Part II (Tamil)
-                    736280,  // GOAT (Tamil)
-                    587412,  // K.G.F: Chapter 2 (Kannada)
-                    564147,  // K.G.F: Chapter 1 (Kannada)
-                    858485,  // Kantara (Kannada)
-                    634120,  // 777 Charlie (Kannada)
-                    1069945, // Manjummel Boys (Malayalam)
-                    1149791, // Premalu (Malayalam)
-                    1166133, // Bramayugam (Malayalam)
-                    472221,  // The Goat Life (Malayalam)
-                    866398,  // Jawan (Hindi)
-                    1159311, // Stree 2 (Hindi)
-                    862552   // Pathaan (Hindi)
-                );
-                for (Integer id : indianTmdbIds) {
-                    if (!movieRepository.existsByTmdbId(id)) {
-                        try { tmdbService.importMovieFromTmdb(id); } catch (Exception e) { log.debug("Import TMDB error {}: {}", id, e.getMessage()); }
+            boolean hasValidTmdbKey = tmdbApiKey != null && !tmdbApiKey.isBlank() && !tmdbApiKey.contains("YOUR_TMDB_API_KEY");
+            if (hasValidTmdbKey) {
+                log.info("Valid TMDB API Key detected: Syncing movies from TMDB API...");
+                try {
+                    List<Integer> indianTmdbIds = List.of(
+                        579974, 1013444, 792307, 492207, 934632, 934433, 856289, 736280,
+                        587412, 564147, 858485, 634120, 1069945, 1149791, 1166133, 472221,
+                        866398, 1159311, 862552
+                    );
+                    for (Integer id : indianTmdbIds) {
+                        if (!movieRepository.existsByTmdbId(id)) {
+                            try { tmdbService.importMovieFromTmdb(id); } catch (Exception e) { log.debug("Import TMDB error {}: {}", id, e.getMessage()); }
+                        }
                     }
+                    tmdbService.syncPopularMoviesFromTmdb(1);
+                } catch (Exception e) {
+                    log.warn("TMDB sync encountered error during initialization: {}", e.getMessage());
                 }
-                tmdbService.syncPopularMoviesFromTmdb(1);
-            } catch (Exception e) {
-                log.warn("TMDB sync failed during initialization (using fallback movies): {}", e.getMessage());
+            }
+
+            if (movieRepository.count() == 0) {
+                log.info("Seeding rich fallback movies catalog...");
                 seedFallbackMovies();
             }
         }
@@ -256,11 +276,17 @@ public class DataInitializer implements CommandLineRunner {
         if (movieRepository.count() > 0) return;
 
         List<Movie> fallback = List.of(
-                Movie.builder().title("RRR").description("A fearless warrior on a perilous mission comes face to face with a steely cop in British India.").durationMinutes(187).genre("Action, Drama").language("Telugu").posterUrl("https://image.tmdb.org/t/p/w500/wE0ScH2ThxtRjXDsnz20xYIBTX0.jpg").backdropUrl("https://image.tmdb.org/t/p/original/b0PlSFdDwbyK0cf52v9y2uEZjSt.jpg").rating(BigDecimal.valueOf(8.5)).voteCount(2800).releaseDate(LocalDate.of(2022, 3, 24)).isActive(true).tmdbId(579974).build(),
-                Movie.builder().title("Jawan").description("A high-octane action thriller highlighting the emotional journey of a man driven to rectify the wrongs in society.").durationMinutes(169).genre("Action, Thriller").language("Hindi").posterUrl("https://image.tmdb.org/t/p/w500/l9lAfp0S6hH2s62P4dM9p1v4J8w.jpg").backdropUrl("https://image.tmdb.org/t/p/original/jzi6G137fM8c4XpG4nS2K4F3.jpg").rating(BigDecimal.valueOf(8.0)).voteCount(1500).releaseDate(LocalDate.of(2023, 9, 7)).isActive(true).tmdbId(866398).build(),
-                Movie.builder().title("K.G.F: Chapter 2").description("In the blood-soaked Kolar Gold Fields, Rocky's name strikes fear into his foes.").durationMinutes(168).genre("Action, Crime, Thriller").language("Kannada").posterUrl("https://image.tmdb.org/t/p/w500/62HCnUTziyWcpDaBO2i1wYh9iy5.jpg").rating(BigDecimal.valueOf(8.4)).voteCount(2100).releaseDate(LocalDate.of(2022, 4, 14)).isActive(true).tmdbId(586945).build(),
-                Movie.builder().title("Inception").description("Dream sharing thief").durationMinutes(148).genre("Sci-Fi, Action").language("English").posterUrl("https://image.tmdb.org/t/p/w500/oYuLEW9W2vBBGLav2Z9N9yP9R1f.jpg").backdropUrl("https://image.tmdb.org/t/p/original/8ZTVqvKDQ8emSGUEMjsS4yHAiE7.jpg").rating(BigDecimal.valueOf(8.8)).voteCount(35000).releaseDate(LocalDate.of(2010, 7, 16)).isActive(true).tmdbId(27205).build(),
-                Movie.builder().title("Interstellar").description("Space exploration for human survival").durationMinutes(169).genre("Sci-Fi, Drama").language("English").posterUrl("https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg").backdropUrl("https://image.tmdb.org/t/p/original/xJHokMbljvjADYdit5fKSuV2yab.jpg").rating(BigDecimal.valueOf(8.7)).voteCount(34000).releaseDate(LocalDate.of(2014, 11, 7)).isActive(true).tmdbId(157336).build()
+                Movie.builder().title("RRR").description("A fearless warrior on a perilous mission comes face to face with a steely cop in British India in this epic tale of friendship, courage, and revolution.").durationMinutes(187).genre("Action, Drama").language("Telugu").posterUrl("https://image.tmdb.org/t/p/w500/wE0ScH2ThxtRjXDsnz20xYIBTX0.jpg").backdropUrl("https://image.tmdb.org/t/p/original/b0PlSFdDwbyK0cf52v9y2uEZjSt.jpg").trailerUrl("https://www.youtube.com/watch?v=Gy4B78S1-dU").rating(BigDecimal.valueOf(8.8)).voteCount(2800).releaseDate(LocalDate.of(2022, 3, 24)).isActive(true).tmdbId(579974).build(),
+                Movie.builder().title("Kalki 2898 AD").description("A modern avatar of Vishnu descends upon Earth to protect the world from evil forces in a dystopian future set in the sacred city of Kasi.").durationMinutes(181).genre("Sci-Fi, Action, Fantasy").language("Telugu").posterUrl("https://image.tmdb.org/t/p/w500/9XHgX5XEQt95nwZIlp2yiMaw65D.jpg").backdropUrl("https://image.tmdb.org/t/p/original/iZbZjYflt859q8hR7bsvApeDLr5.jpg").trailerUrl("https://www.youtube.com/watch?v=kQDd1AhGIHk").rating(BigDecimal.valueOf(8.6)).voteCount(1900).releaseDate(LocalDate.of(2024, 6, 27)).isActive(true).tmdbId(1013444).build(),
+                Movie.builder().title("Jawan").description("A high-octane action thriller highlighting the emotional journey of a man driven to rectify the wrongs in society and fight systemic corruption.").durationMinutes(169).genre("Action, Thriller").language("Hindi").posterUrl("https://image.tmdb.org/t/p/w500/l9lAfp0S6hH2s62P4dM9p1v4J8w.jpg").backdropUrl("https://image.tmdb.org/t/p/original/jzi6G137fM8c4XpG4nS2K4F3.jpg").trailerUrl("https://www.youtube.com/watch?v=COv52Qyctws").rating(BigDecimal.valueOf(8.2)).voteCount(1500).releaseDate(LocalDate.of(2023, 9, 7)).isActive(true).tmdbId(866398).build(),
+                Movie.builder().title("Stree 2: Sarkate Ka Aatank").description("The town of Chanderi is haunted by a terrifying new headless entity named Sarkata. The eccentric gang reassembles with Stree to protect the town.").durationMinutes(147).genre("Comedy, Horror").language("Hindi").posterUrl("https://image.tmdb.org/t/p/w500/f3yZZw7zIsWo6m9xJStfjDauIZX.jpg").backdropUrl("https://image.tmdb.org/t/p/original/ks72NqTPhpupk207NXiqmZIQQVI.jpg").trailerUrl("https://www.youtube.com/watch?v=KVnheXwqF08").rating(BigDecimal.valueOf(8.4)).voteCount(800).releaseDate(LocalDate.of(2024, 8, 15)).isActive(true).tmdbId(1159311).build(),
+                Movie.builder().title("Spider-Man: Brand New Day").description("Peter Parker fights crime full-time in a world that no longer remembers him, confronting a sinister new syndicate threatening New York City.").durationMinutes(145).genre("Action, Adventure, Sci-Fi").language("English").posterUrl("https://image.tmdb.org/t/p/w500/6Q21yptoOCUq4ErwVncesLPVplb.jpg").backdropUrl("https://image.tmdb.org/t/p/original/kbvNLChuMl2nyAzPZvqkD8hZGZn.jpg").trailerUrl("https://www.youtube.com/watch?v=P3uI5sLosKU").rating(BigDecimal.valueOf(9.1)).voteCount(4200).releaseDate(LocalDate.of(2026, 7, 28)).isActive(true).tmdbId(969681).build(),
+                Movie.builder().title("Leo").description("A mild-mannered cafe owner in Himachal Pradesh becomes a target of ruthless drug cartels who suspect him of being a legendary former gangster.").durationMinutes(164).genre("Action, Thriller, Crime").language("Tamil").posterUrl("https://image.tmdb.org/t/p/w500/5JykVg5yWm5QiFyeEBq3diDmI5.jpg").backdropUrl("https://image.tmdb.org/t/p/original/simwM18UKG0DSZXvzdKYM6ihUch.jpg").trailerUrl("https://www.youtube.com/watch?v=Po3jStA673E").rating(BigDecimal.valueOf(8.0)).voteCount(1100).releaseDate(LocalDate.of(2023, 10, 19)).isActive(true).tmdbId(934632).build(),
+                Movie.builder().title("Jailer").description("A retired prison officer embarks on a merciless manhunt when his honest police inspector son goes missing after probing an antique smuggling syndicate.").durationMinutes(168).genre("Action, Crime, Thriller").language("Tamil").posterUrl("https://image.tmdb.org/t/p/w500/jt8pfSIdi47YpFMMWVRr8w5u2S0.jpg").backdropUrl("https://image.tmdb.org/t/p/original/v3lNH2gCojWYXVuXcT9FZLBxcSq.jpg").trailerUrl("https://www.youtube.com/watch?v=Y5BeWdODb7c").rating(BigDecimal.valueOf(8.1)).voteCount(950).releaseDate(LocalDate.of(2023, 8, 10)).isActive(true).tmdbId(934433).build(),
+                Movie.builder().title("Inception").description("A skilled thief who steals corporate secrets through dream-sharing technology is offered a chance to have his criminal history erased if he can plant an idea.").durationMinutes(148).genre("Sci-Fi, Action, Thriller").language("English").posterUrl("https://image.tmdb.org/t/p/w500/oYuLEW9W2vBBGLav2Z9N9yP9R1f.jpg").backdropUrl("https://image.tmdb.org/t/p/original/8ZTVqvKDQ8emSGUEMjsS4yHAiE7.jpg").trailerUrl("https://www.youtube.com/watch?v=YoHD9XEInc0").rating(BigDecimal.valueOf(8.8)).voteCount(35000).releaseDate(LocalDate.of(2010, 7, 16)).isActive(true).tmdbId(27205).build(),
+                Movie.builder().title("Interstellar").description("When Earth becomes uninhabitable, a team of ex-NASA astronauts embarks on a voyage through a wormhole near Saturn in search of a new home for mankind.").durationMinutes(169).genre("Sci-Fi, Drama, Adventure").language("English").posterUrl("https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg").backdropUrl("https://image.tmdb.org/t/p/original/xJHokMbljvjADYdit5fKSuV2yab.jpg").trailerUrl("https://www.youtube.com/watch?v=zSWdZVtXT7E").rating(BigDecimal.valueOf(8.7)).voteCount(34000).releaseDate(LocalDate.of(2014, 11, 7)).isActive(true).tmdbId(157336).build(),
+                Movie.builder().title("Pushpa 2: The Rule").description("Pushpa Raj cements his rule over the red sandalwood smuggling empire while confronting ferocious challenges from law enforcement and rival syndicates.").durationMinutes(180).genre("Action, Crime, Thriller").language("Telugu").posterUrl("https://image.tmdb.org/t/p/w500/xWHolsIDUSvWngeFfeZi52A7W7P.jpg").backdropUrl("https://image.tmdb.org/t/p/original/z1Es5M643hfdW0tIJbdqnSS6rv2.jpg").trailerUrl("https://www.youtube.com/watch?v=Gy4B78S1-dU").rating(BigDecimal.valueOf(8.5)).voteCount(2400).releaseDate(LocalDate.of(2024, 12, 5)).isActive(true).tmdbId(792307).build(),
+                Movie.builder().title("K.G.F: Chapter 2").description("In the blood-soaked Kolar Gold Fields, Rocky's name strikes fear into his foes.").durationMinutes(168).genre("Action, Crime, Thriller").language("Kannada").posterUrl("https://image.tmdb.org/t/p/w500/62HCnUTziyWcpDaBO2i1wYh9iy5.jpg").backdropUrl("https://image.tmdb.org/t/p/original/b0PlSFdDwbyK0cf52v9y2uEZjSt.jpg").trailerUrl("https://www.youtube.com/watch?v=JKa05nyUmuQ").rating(BigDecimal.valueOf(8.4)).voteCount(2100).releaseDate(LocalDate.of(2022, 4, 14)).isActive(true).tmdbId(587412).build()
         );
 
         movieRepository.saveAll(fallback);
