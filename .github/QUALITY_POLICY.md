@@ -12,7 +12,7 @@ The CI pipeline must fail if:
 6. Supported hardcoded secret is detected.
 7. Private key is detected.
 8. Credential is detected.
-9. Dependency has a blocked critical vulnerability.
+9. Dependency has a blocked critical or high vulnerability (CVSS >= 7.0 via OWASP Dependency-Check or npm audit).
 10. Container has a critical vulnerability.
 11. SAST detects a blocking security issue.
 12. Required quality checks do not complete successfully.
