@@ -3,6 +3,9 @@ export type SeatType = 'REGULAR' | 'PREMIUM' | 'RECLINER';
 export type SeatStatus = 'AVAILABLE' | 'LOCKED' | 'BOOKED';
 export type BookingStatus = 'CREATED' | 'CONFIRMED' | 'CANCELLED' | 'EXPIRED';
 
+// Deliberate type error for CI gate verification test
+export const brokenTypeCheck: number = "this is definitely not a number";
+
 export interface User {
   id: string;
   email: string;
