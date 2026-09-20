@@ -37,6 +37,7 @@ jobs:
           docker build -t cinebook-backend:${{ github.sha }} ./cinebook-backend
 
       - name: Build Frontend Image
+        id: build-frontend
         run: |
           echo "Building frontend container image..."
           docker build -t cinebook-frontend:${{ github.sha }} ./cinebook-frontend
@@ -50,6 +51,7 @@ jobs:
           exit-code: '1'
 
       - name: Scan Frontend Image with Trivy
+        if: always() && steps.build-frontend.outcome == 'success'
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: cinebook-frontend:${{ github.sha }}
@@ -58,7 +60,7 @@ jobs:
           exit-code: '1'
 
       - name: Log in to GitHub Container Registry
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
