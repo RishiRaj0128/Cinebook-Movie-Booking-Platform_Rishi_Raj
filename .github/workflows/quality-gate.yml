@@ -29,7 +29,7 @@ jobs:
           echo "Target Commit: $COMMIT_SHA"
           echo "Repository: $REPO"
 
-          MAX_ATTEMPTS=40
+          MAX_ATTEMPTS=60
           SLEEP_SECONDS=15
           ATTEMPT=0
 
@@ -37,9 +37,15 @@ jobs:
             "Frontend Code Style (ESLint & Prettier)"
             "Backend Code Style (Checkstyle)"
             "Secret Scanning (Gitleaks)"
+            "CodeQL SAST (java-kotlin)"
+            "CodeQL SAST (javascript-typescript)"
             "SAST Scan (Semgrep OWASP Top 10)"
+            "Frontend Dependencies (npm audit)"
+            "Backend Dependencies (OWASP Dependency-Check)"
+            "Cross-Ecosystem Advisory Scan (OSV-Scanner)"
             "Backend Build & Verify (Java 21)"
             "Frontend Build & Test (TypeScript + Vitest)"
+            "Container Build, Trivy Security Scan & GHCR Publish"
           )
 
           echo "Monitoring required gates until completion..."
