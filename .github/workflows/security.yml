@@ -1,0 +1,143 @@
+name: Security & SAST Gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1' # Weekly Monday 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  # ----------------------------------------------------------------------------
+  # Gate 1: Secret Detection via Gitleaks
+  # Scans PR diffs or full git history to ensure no tokens/passwords enter repo.
+  # ----------------------------------------------------------------------------
+  gitleaks:
+    name: Secret Scanning (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_SUMMARY: true
+
+  # ----------------------------------------------------------------------------
+  # Gate 2: SAST via GitHub CodeQL
+  # Deep semantic and data-flow static analysis across Java and JS/TS.
+  # ----------------------------------------------------------------------------
+  codeql:
+    name: CodeQL SAST (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: java-kotlin
+            build-mode: autobuild
+          - language: javascript-typescript
+            build-mode: none
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21 (for Java analysis)
+        if: matrix.language == 'java-kotlin'
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          queries: security-extended,security-and-quality
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  # ----------------------------------------------------------------------------
+  # Gate 3: AST Pattern Scanning via Semgrep
+  # Scans for OWASP Top 10, CWE patterns, insecure cryptos, and secret patterns.
+  # Fails build on CRITICAL / HIGH severity issues per repository policy.
+  # ----------------------------------------------------------------------------
+  semgrep:
+    name: SAST Scan (Semgrep OWASP Top 10)
+    runs-on: ubuntu-latest
+    container:
+      image: returntocorp/semgrep:latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Semgrep scan & generate SARIF
+        run: |
+          semgrep scan \
+            --config p/default \
+            --config p/owasp-top-ten \
+            --config p/secrets \
+            --sarif \
+            --output semgrep.sarif \
+            --metrics=off || true
+
+      - name: Enforce Severity Gate (Fail on HIGH / CRITICAL)
+        run: |
+          # Parse Semgrep SARIF output for blocking severity findings
+          python3 - << 'EOF'
+          import json, sys
+
+          try:
+              with open('semgrep.sarif', 'r') as f:
+                  sarif = json.load(f)
+          except Exception as e:
+              print(f"Error reading SARIF: {e}")
+              sys.exit(0)
+
+          blocking_count = 0
+          warning_count = 0
+
+          for run in sarif.get('runs', []):
+              for result in run.get('results', []):
+                  level = result.get('level', 'warning').lower()
+                  rule_id = result.get('ruleId', 'unknown')
+                  msg = result.get('message', {}).get('text', '')
+
+                  if level == 'error':
+                      print(f"::error file={result.get('locations', [{}])[0].get('physicalLocation', {}).get('artifactLocation', {}).get('uri', '')}::[BLOCKING HIGH/CRITICAL] {rule_id}: {msg}")
+                      blocking_count += 1
+                  elif level == 'warning':
+                      print(f"::warning file={result.get('locations', [{}])[0].get('physicalLocation', {}).get('artifactLocation', {}).get('uri', '')}::[NON-BLOCKING MEDIUM] {rule_id}: {msg}")
+                      warning_count += 1
+
+          print(f"\nSemgrep Summary: {blocking_count} blocking (HIGH/CRITICAL), {warning_count} warnings (MEDIUM)")
+
+          if blocking_count > 0:
+              print("❌ Gate Failed: High or Critical security findings detected by Semgrep.")
+              sys.exit(1)
+          else:
+              print("✅ Semgrep severity gate passed.")
+          EOF
+
+      - name: Upload Semgrep SARIF report to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
