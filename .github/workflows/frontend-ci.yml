@@ -1,0 +1,48 @@
+name: Frontend CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  frontend-build-test:
+    name: Frontend Build & Test (TypeScript + Vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: cinebook-frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./cinebook-frontend
+        run: npm ci
+
+      - name: TypeScript Type Checking (Strict Fail)
+        working-directory: ./cinebook-frontend
+        run: npx tsc --noEmit
+
+      - name: Run Vitest Smoke Tests
+        working-directory: ./cinebook-frontend
+        run: npm test
+
+      - name: Build Production Bundle
+        working-directory: ./cinebook-frontend
+        run: npm run build
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: cinebook-frontend/dist/

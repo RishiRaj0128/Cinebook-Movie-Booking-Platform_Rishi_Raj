@@ -1,0 +1,48 @@
+spring:
+  application:
+    name: cinebook-backend-test
+
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    database-platform: org.hibernate.dialect.H2Dialect
+    show-sql: false
+
+  flyway:
+    enabled: false
+
+  cache:
+    type: simple
+
+  data:
+    redis:
+      repositories:
+        enabled: false
+
+jwt:
+  secret: cinebook-super-secret-key-minimum-256-bits-long-for-hs256-algorithm
+  expiration-ms: 86400000
+  refresh-expiration-ms: 604800000
+
+razorpay:
+  key-id: rzp_test_dummy
+  key-secret: dummy_secret
+  webhook-secret: dummy_webhook
+
+tmdb:
+  api-key: ""
+  base-url: https://api.themoviedb.org/3
+  image-base: https://image.tmdb.org/t/p
+
+app:
+  cors:
+    allowed-origins: "*"
+  seat-lock:
+    duration-minutes: 10
+  frontend-url: http://localhost:5173
