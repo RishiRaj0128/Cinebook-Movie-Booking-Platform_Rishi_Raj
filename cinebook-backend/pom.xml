@@ -26,7 +26,7 @@
     <lombok.version>1.18.36</lombok.version>
     <springdoc.version>2.6.0</springdoc.version>
     <zxing.version>3.5.3</zxing.version>
-    <razorpay.version>1.4.5</razorpay.version>
+    <razorpay.version>1.4.10</razorpay.version>
   </properties>
 
   <dependencyManagement>
