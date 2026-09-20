@@ -12,6 +12,12 @@ target/
 *.jar
 *.war
 .m2/
+application/
+dependencies/
+snapshot-dependencies/
+spring-boot-loader/
+META-INF/
+.vite/
 
 # IDE & OS Files
 .idea/
