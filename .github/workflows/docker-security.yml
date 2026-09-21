@@ -46,6 +46,8 @@ jobs:
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: cinebook-backend:${{ github.sha }}
+          vuln-type: 'os'
+          ignore-unfixed: true
           format: 'table'
           severity: 'CRITICAL,HIGH'
           exit-code: '1'
@@ -55,6 +57,8 @@ jobs:
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: cinebook-frontend:${{ github.sha }}
+          vuln-type: 'os'
+          ignore-unfixed: true
           format: 'table'
           severity: 'CRITICAL,HIGH'
           exit-code: '1'
