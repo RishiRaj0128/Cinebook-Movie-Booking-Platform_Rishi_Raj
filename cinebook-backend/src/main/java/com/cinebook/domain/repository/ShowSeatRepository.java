@@ -3,6 +3,7 @@ package com.cinebook.domain.repository;
 import com.cinebook.domain.entity.ShowSeat;
 import com.cinebook.domain.enums.SeatStatus;
 import jakarta.persistence.LockModeType;
+import jakarta.persistence.QueryHint;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -27,8 +28,10 @@ public interface ShowSeatRepository extends JpaRepository<ShowSeat, UUID> {
      * Acquire PESSIMISTIC_WRITE lock on target rows.
      * Equivalent to PostgreSQL SELECT ... FOR UPDATE.
      * Used by SeatLockService to prevent double-booking.
+     * Uses 3000ms lock timeout to fail-fast rather than hanging indefinitely.
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @QueryHints({@QueryHint(name = "jakarta.persistence.lock.timeout", value = "3000")})
     @Query("SELECT ss FROM ShowSeat ss WHERE ss.id IN :ids AND ss.show.id = :showId")
     List<ShowSeat> findByIdsWithLock(
         @Param("ids")    List<UUID> ids,
