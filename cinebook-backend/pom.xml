@@ -25,8 +25,8 @@
     <mapstruct.version>1.6.3</mapstruct.version>
     <lombok.version>1.18.36</lombok.version>
     <springdoc.version>2.6.0</springdoc.version>
-    <zxing.version>3.5.3</zxing.version>
-    <razorpay.version>1.4.5</razorpay.version>
+    <zxing.version>3.5.4</zxing.version>
+    <razorpay.version>1.4.10</razorpay.version>
   </properties>
 
   <dependencyManagement>
@@ -198,7 +198,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.13.0</version>
+        <version>3.16.0</version>
         <configuration>
           <fork>true</fork>
           <release>21</release>

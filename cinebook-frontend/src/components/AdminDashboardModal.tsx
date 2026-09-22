@@ -7,7 +7,10 @@ interface AdminDashboardModalProps {
   onRefreshMovies: () => void;
 }
 
-export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClose, onRefreshMovies }) => {
+export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
+  onClose,
+  onRefreshMovies,
+}) => {
   const [tmdbId, setTmdbId] = useState('');
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -36,7 +39,9 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
     try {
       const res = await fetch('/api/tmdb/sync?pages=2', { method: 'POST' });
       const data = await res.json();
-      setMessage(data.message || `Successfully synced popular movies from TMDB!`);
+      setMessage(
+        data.message || `Successfully synced popular movies from TMDB!`
+      );
       onRefreshMovies();
     } catch (err: any) {
       setMessage(`TMDB sync failed: ${err.message}`);
@@ -47,34 +52,90 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" style={{ maxWidth: 540 }} onClick={(e) => e.stopPropagation()}>
+      <div
+        className="modal-content"
+        style={{ maxWidth: 540 }}
+        onClick={(e) => e.stopPropagation()}
+      >
         <button
           onClick={onClose}
-          style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer' }}
+          style={{
+            position: 'absolute',
+            top: 16,
+            right: 16,
+            background: 'none',
+            border: 'none',
+            color: '#9ca3af',
+            cursor: 'pointer',
+          }}
         >
           <X size={20} />
         </button>
 
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <h2
+          style={{
+            fontSize: '1.5rem',
+            fontWeight: 800,
+            marginBottom: '1.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+          }}
+        >
           <ShieldCheck color="#e50914" /> Admin Control Panel
         </h2>
 
         {/* Quick Bulk TMDB Sync */}
-        <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div
+          className="glass-panel"
+          style={{ padding: '1.5rem', marginBottom: '1.5rem' }}
+        >
+          <h3
+            style={{
+              fontSize: '1rem',
+              fontWeight: 700,
+              marginBottom: '0.5rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
             <RefreshCw size={16} /> Fetch Popular Movies Live from TMDB
           </h3>
-          <p style={{ fontSize: '0.85rem', color: '#9ca3af', marginBottom: '1rem' }}>
-            Automatically fetches and imports top trending movies directly from TMDB API across all genres.
+          <p
+            style={{
+              fontSize: '0.85rem',
+              color: '#9ca3af',
+              marginBottom: '1rem',
+            }}
+          >
+            Automatically fetches and imports top trending movies directly from
+            TMDB API across all genres.
           </p>
-          <button className="btn btn-primary" onClick={handleBulkSync} disabled={syncing} style={{ width: '100%' }}>
-            {syncing ? 'Fetching TMDB Movies...' : '⚡ Bulk Sync Top Movies from TMDB'}
+          <button
+            className="btn btn-primary"
+            onClick={handleBulkSync}
+            disabled={syncing}
+            style={{ width: '100%' }}
+          >
+            {syncing
+              ? 'Fetching TMDB Movies...'
+              : '⚡ Bulk Sync Top Movies from TMDB'}
           </button>
         </div>
 
         {/* Import single movie by ID */}
         <div className="glass-panel" style={{ padding: '1.5rem' }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <h3
+            style={{
+              fontSize: '1rem',
+              fontWeight: 700,
+              marginBottom: '0.75rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
             <Download size={16} /> Import Specific Movie by TMDB ID
           </h3>
           <form onSubmit={handleImport} style={{ display: 'flex', gap: 10 }}>
@@ -86,13 +147,23 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               onChange={(e) => setTmdbId(e.target.value)}
               required
             />
-            <button type="submit" className="btn btn-secondary" disabled={loading}>
+            <button
+              type="submit"
+              className="btn btn-secondary"
+              disabled={loading}
+            >
               {loading ? 'Importing...' : 'Import'}
             </button>
           </form>
 
           {message && (
-            <div style={{ marginTop: '1rem', fontSize: '0.875rem', color: message.includes('failed') ? '#ef4444' : '#10b981' }}>
+            <div
+              style={{
+                marginTop: '1rem',
+                fontSize: '0.875rem',
+                color: message.includes('failed') ? '#ef4444' : '#10b981',
+              }}
+            >
               {message}
             </div>
           )}

@@ -56,4 +56,14 @@ public class LedgerEntry {
     public Money getAmountMoney() {
         return Money.ofPaise(amountPaise);
     }
+
+    @PreUpdate
+    public void preUpdate() {
+        throw new UnsupportedOperationException("LedgerEntry is immutable: UPDATE operations are strictly prohibited.");
+    }
+
+    @PreRemove
+    public void preRemove() {
+        throw new UnsupportedOperationException("LedgerEntry is append-only: DELETE operations are strictly prohibited.");
+    }
 }

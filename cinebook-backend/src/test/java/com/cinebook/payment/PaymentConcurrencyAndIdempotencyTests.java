@@ -6,6 +6,7 @@ import com.cinebook.domain.entity.Wallet;
 import com.cinebook.domain.enums.AccountType;
 import com.cinebook.domain.enums.TransactionState;
 import com.cinebook.domain.enums.UserRole;
+import com.cinebook.domain.model.payment.LedgerEntryRecord;
 import com.cinebook.domain.model.payment.Money;
 import com.cinebook.domain.model.payment.PaymentRequestRecord;
 import com.cinebook.domain.model.payment.TransactionResultRecord;
@@ -75,6 +76,9 @@ public class PaymentConcurrencyAndIdempotencyTests {
     @Autowired private UserRepository userRepository;
     @Autowired private WalletRepository walletRepository;
     @Autowired private PaymentTransactionRepository transactionRepository;
+    @Autowired private com.cinebook.domain.repository.LedgerRepository ledgerRepository;
+    @Autowired private com.cinebook.domain.repository.BookingRepository bookingRepository;
+    @Autowired private com.cinebook.domain.repository.ShowRepository showRepository;
     @Autowired private ObjectMapper objectMapper;
     @Autowired private MockMvc mockMvc;
     @Autowired private PlatformTransactionManager transactionManager;
@@ -116,6 +120,7 @@ public class PaymentConcurrencyAndIdempotencyTests {
 
         // Assert all violated rules were accumulated without premature short-circuiting
         assertTrue(violations.contains("ERR_NON_POSITIVE_AMOUNT"), "Must catch non-positive amount");
+        assertTrue(violations.contains("ERR_INACTIVE_OR_MISSING_BOOKING"), "Must catch missing or inactive booking");
         assertTrue(violations.contains("ERR_UNSUPPORTED_CURRENCY"), "Must catch unsupported currency");
         assertTrue(violations.contains("ERR_UNSUPPORTED_PAYMENT_METHOD"), "Must catch unsupported payment method");
 
@@ -138,31 +143,55 @@ public class PaymentConcurrencyAndIdempotencyTests {
                 "INR",
                 "WALLET",
                 "idem-valid-1",
-                Map.of("bookingStatus", "CREATED", "userStatus", "ACTIVE", "fraudRiskLevel", "NORMAL")
+                Map.of("bookingStatus", "CREATED", "userStatus", "ACTIVE", "fraudVelocityScore", "0.1")
         );
-        assertTrue(corePipeline.validateAll(validReq).isEmpty(), "Valid request must pass all 5 core rules");
+        assertTrue(corePipeline.validateAll(validReq).isEmpty(), "Valid request must have 0 rule violations");
 
-        // 2. Request violating activeBookingRule, userEligibilityRule, and antiFraudVelocityRule
-        PaymentRequestRecord fraudReq = new PaymentRequestRecord(
+        // 2. Request violating 3 of the 5 core rules (non-positive amount, cancelled booking, suspended user)
+        PaymentRequestRecord multiViolations = new PaymentRequestRecord(
                 UUID.randomUUID(),
                 testUser.getId(),
-                Money.ofPaise(6_000_000L), // Exceeds 50,000 INR limit
+                Money.ofPaise(0L), // Non-positive amount (0 paise)
                 "INR",
                 "WALLET",
-                "idem-fraud-1",
-                Map.of("bookingStatus", "CANCELLED", "userStatus", "SUSPENDED", "fraudRiskLevel", "SUSPECTED_VELOCITY_SPIKE")
+                "idem-valid-2",
+                Map.of("bookingStatus", "CANCELLED", "userStatus", "SUSPENDED")
         );
+        List<String> violations = corePipeline.validateAll(multiViolations);
+        assertEquals(3, violations.size(), "Pipeline must accumulate exactly 3 violations");
+        assertTrue(violations.contains("ERR_NON_POSITIVE_AMOUNT"));
+        assertTrue(violations.contains("ERR_INACTIVE_OR_MISSING_BOOKING"));
+        assertTrue(violations.contains("ERR_USER_NOT_ELIGIBLE"));
 
-        List<String> coreViolations = corePipeline.validateAll(fraudReq);
-        assertTrue(coreViolations.contains("ERR_INACTIVE_OR_MISSING_BOOKING"), "Must reject cancelled/inactive booking");
-        assertTrue(coreViolations.contains("ERR_USER_NOT_ELIGIBLE"), "Must reject suspended user");
-        assertTrue(coreViolations.contains("ERR_FRAUD_VELOCITY_EXCEEDED"), "Must reject fraud velocity spike");
-        assertTrue(coreViolations.contains("ERR_TRANSACTION_LIMIT_EXCEEDED"), "Must reject amount over transaction limit");
-        assertEquals(4, coreViolations.size());
+        // 3. Fraud velocity breach
+        PaymentRequestRecord velocitySpike = new PaymentRequestRecord(
+                UUID.randomUUID(),
+                testUser.getId(),
+                Money.ofPaise(10_000L),
+                "INR",
+                "WALLET",
+                "idem-valid-3",
+                Map.of("bookingStatus", "CREATED", "fraudVelocityScore", "0.95")
+        );
+        List<String> velocityViolations = corePipeline.validateAll(velocitySpike);
+        assertTrue(velocityViolations.contains("ERR_FRAUD_VELOCITY_EXCEEDED"));
+
+        // 4. Single transaction limit exceeded (> ₹50,000)
+        PaymentRequestRecord limitExceeded = new PaymentRequestRecord(
+                UUID.randomUUID(),
+                testUser.getId(),
+                Money.ofPaise(6_000_000L), // ₹60,000
+                "INR",
+                "WALLET",
+                "idem-valid-4",
+                Map.of("bookingStatus", "CREATED")
+        );
+        List<String> limitViolations = corePipeline.validateAll(limitExceeded);
+        assertTrue(limitViolations.contains("ERR_TRANSACTION_LIMIT_EXCEEDED"));
     }
 
     // =========================================================================
-    // PHASE 2: Idempotency & Concurrent Duplicate Request Test
+    // PHASE 2: Cryptographic Idempotency Tests
     // =========================================================================
     @Test
     @DisplayName("Phase 2: Two concurrent threads with same Idempotency-Key produce exactly ONE charge")
@@ -174,14 +203,23 @@ public class PaymentConcurrencyAndIdempotencyTests {
         String sharedIdempotencyKey = "idem-test-key-" + UUID.randomUUID();
         Money chargeAmount = Money.ofPaise(30_000L); // ₹300
 
+        com.cinebook.domain.entity.Show show = showRepository.findAll().stream().findFirst().orElse(null);
+        com.cinebook.domain.entity.Booking testBooking = bookingRepository.save(com.cinebook.domain.entity.Booking.builder()
+                .user(testUser)
+                .show(show)
+                .totalAmount(30000)
+                .status(com.cinebook.domain.enums.BookingStatus.CREATED)
+                .bookingSeats(new ArrayList<>())
+                .build());
+
         PaymentRequestRecord request = new PaymentRequestRecord(
-                null,
+                testBooking.getId(),
                 testUser.getId(),
                 chargeAmount,
                 "INR",
                 "WALLET",
                 sharedIdempotencyKey,
-                Map.of()
+                Map.of("bookingStatus", "CREATED")
         );
 
         int threadCount = 2;
@@ -224,18 +262,42 @@ public class PaymentConcurrencyAndIdempotencyTests {
     }
 
     @Test
-    @DisplayName("Phase 2: Database UNIQUE(idempotency_key) constraint itself handles multi-instance race conditions")
-    void testMultiInstanceDatabaseIdempotencyConstraint() {
+    @DisplayName("Phase 2: Database atomic claim & UNIQUE constraint prevents concurrent multi-instance business execution")
+    void testMultiInstanceDatabaseIdempotencyConstraint() throws Exception {
         String key = "db-unique-key-" + UUID.randomUUID();
         Map<String, Object> payload = Map.of("bookingId", UUID.randomUUID().toString(), "amount", 500);
 
-        // Instance A executes and commits
-        String responseA = idempotencyService.executeWithDatabaseGuaranteesOnly(key, payload, String.class, () -> "ORDER_PROCESSED_A");
-        assertEquals("ORDER_PROCESSED_A", responseA);
+        AtomicInteger businessExecutionCount = new AtomicInteger(0);
+        CountDownLatch startLatch = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
 
-        // Instance B hits the DB for the same key (bypassing JVM lock) -> must catch unique constraint & return cached response verbatim
-        String responseB = idempotencyService.executeWithDatabaseGuaranteesOnly(key, payload, String.class, () -> "ORDER_PROCESSED_B");
-        assertEquals("ORDER_PROCESSED_A", responseB, "Database unique constraint must ensure winner response is returned verbatim");
+        Callable<String> worker = () -> {
+            startLatch.await();
+            return idempotencyService.executeWithDatabaseGuaranteesOnly(key, payload, String.class, () -> {
+                businessExecutionCount.incrementAndGet();
+                try {
+                    Thread.sleep(150);
+                } catch (InterruptedException ignored) {}
+                return "ORDER_PROCESSED_SUCCESS";
+            });
+        };
+
+        Future<String> futureA = executor.submit(worker);
+        Future<String> futureB = executor.submit(worker);
+
+        startLatch.countDown(); // Release both threads concurrently
+        executor.shutdown();
+        assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+
+        String responseA = futureA.get();
+        String responseB = futureB.get();
+
+        // Both cluster nodes must obtain identical successful responses
+        assertEquals("ORDER_PROCESSED_SUCCESS", responseA);
+        assertEquals("ORDER_PROCESSED_SUCCESS", responseB);
+
+        // CRITICAL: The business action must execute EXACTLY ONCE despite concurrent race!
+        assertEquals(1, businessExecutionCount.get(), "Business logic must execute exactly once across concurrent cluster nodes");
     }
 
     @Test
@@ -362,8 +424,8 @@ public class PaymentConcurrencyAndIdempotencyTests {
         contenderFuture.get(2, TimeUnit.SECONDS);
         executor.shutdown();
 
-        // Note: In H2 in-memory mode or PostgreSQL, lock timeout triggers an exception
-        // confirming worker threads fail-fast rather than hanging indefinitely.
+        // Verify that lock timeout occurred on second thread contending for row lock
+        assertTrue(timeoutCaught.get(), "Second transaction must fail due to the 3000ms lock timeout");
     }
 
     // =========================================================================
@@ -385,6 +447,24 @@ public class PaymentConcurrencyAndIdempotencyTests {
         assertTrue(report.isBalanced(), "Ledger must be perfectly balanced");
         assertEquals(0L, report.netBalancePaise(), "Net sum across all debit and credit entries must be 0");
         assertEquals(report.totalCreditsPaise(), report.totalDebitsPaise(), "Total credits must equal total debits");
+    }
+
+    @Test
+    @DisplayName("Phase 4: Ledger append-only immutability invariant strictly rejects UPDATE and DELETE")
+    void testAppendOnlyLedgerProhibitsUpdateAndDelete() {
+        UUID tx = UUID.randomUUID();
+        List<LedgerEntryRecord> entries = ledgerService.recordTransfer(
+                tx, "USER_WALLET:B", AccountType.USER_WALLET, "ESCROW", AccountType.MERCHANT_ESCROW, Money.ofPaise(5000L), "Immutability test"
+        );
+        assertEquals(2, entries.size());
+
+        List<com.cinebook.domain.entity.LedgerEntry> dbEntries = ledgerRepository.findByTransactionId(tx);
+        assertFalse(dbEntries.isEmpty());
+        com.cinebook.domain.entity.LedgerEntry entry = dbEntries.get(0);
+
+        // Verify entity-level JPA lifecycle callbacks reject updates and deletes
+        assertThrows(UnsupportedOperationException.class, entry::preUpdate, "LedgerEntry must prohibit updates");
+        assertThrows(UnsupportedOperationException.class, entry::preRemove, "LedgerEntry must prohibit deletions");
     }
 
     // =========================================================================
@@ -484,6 +564,11 @@ public class PaymentConcurrencyAndIdempotencyTests {
         assertEquals(4, result.completedSteps().size(), "All 4 steps must be completed");
         assertEquals(List.of("HoldSeatStep", "AuthorizePaymentStep", "PostLedgerStep", "ConfirmBookingStep"), result.completedSteps());
         assertTrue(result.compensatedSteps().isEmpty(), "No compensations should execute on success");
+
+        // CRITICAL ASSERTION: Real double-entry ledger entries were committed to DB
+        // Step 2 debits wallet into escrow (2 entries), Step 3 transfers escrow to cinema revenue (2 entries) = 4 total
+        List<com.cinebook.domain.entity.LedgerEntry> sagaLedgerEntries = ledgerRepository.findByTransactionId(ctx.getTransactionId());
+        assertEquals(4, sagaLedgerEntries.size(), "Step 2 and Step 3 must commit exactly 4 balanced ledger entries (2 pairs of DEBIT/CREDIT)");
     }
 
     @Test
@@ -509,6 +594,11 @@ public class PaymentConcurrencyAndIdempotencyTests {
         assertEquals(List.of("PostLedgerStep", "AuthorizePaymentStep", "HoldSeatStep"), result.compensatedSteps());
         assertFalse(ctx.isPaymentAuthorized(), "Payment authorization must be rolled back by compensation");
         assertFalse(ctx.isSeatsHeld(), "Seat hold must be released by compensation");
+
+        // CRITICAL ASSERTION: Forward ledger transfers (4 entries) + compensating reverse transfers (4 entries) = 8 total
+        List<com.cinebook.domain.entity.LedgerEntry> sagaLedgerEntries = ledgerRepository.findByTransactionId(ctx.getTransactionId());
+        assertEquals(8, sagaLedgerEntries.size(), "Compensated saga must have 8 ledger entries (4 forward + 4 reverse)");
+        assertTrue(ledgerService.reconcileLedger().isBalanced(), "Ledger remains balanced after compensation");
     }
 
     @Test

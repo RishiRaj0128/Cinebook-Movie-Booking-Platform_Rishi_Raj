@@ -72,8 +72,27 @@ public class PaymentEngineService {
     public TransactionResultRecord processPayment(PaymentRequestRecord request) {
         Objects.requireNonNull(request, "request cannot be null");
 
+        // Enrich booking status in metadata from DB if bookingId is provided and metadata doesn't specify it
+        PaymentRequestRecord validatedRequest = request;
+        if (request.bookingId() != null && !request.metadata().containsKey("bookingStatus")) {
+            java.util.Map<String, String> enrichedMetadata = new java.util.HashMap<>(request.metadata());
+            bookingRepository.findById(request.bookingId()).ifPresentOrElse(
+                    b -> enrichedMetadata.put("bookingStatus", b.getStatus().name()),
+                    () -> enrichedMetadata.put("bookingStatus", "NOT_FOUND")
+            );
+            validatedRequest = new PaymentRequestRecord(
+                    request.bookingId(),
+                    request.userId(),
+                    request.amount(),
+                    request.currency(),
+                    request.paymentMethod(),
+                    request.idempotencyKey(),
+                    enrichedMetadata
+            );
+        }
+
         // 1. Pure Functional Rule Validation (accumulates all violations in one pass)
-        List<String> violations = rulePipeline.validateAll(request);
+        List<String> violations = rulePipeline.validateAll(validatedRequest);
         if (!violations.isEmpty()) {
             log.warn("Payment request rejected due to rule violations: {}", violations);
             return TransactionResultRecord.failed(
@@ -107,11 +126,16 @@ public class PaymentEngineService {
             // LOCK ORDERING DISCIPLINE:
             // Seat rows locked FIRST to eliminate cyclic deadlocks with wallet locks.
             // =========================================================================
-            List<UUID> showSeatIds = booking.getBookingSeats().stream()
-                    .map(bs -> bs.getShowSeat().getId())
-                    .toList();
+            List<UUID> showSeatIds = (booking.getBookingSeats() != null)
+                    ? booking.getBookingSeats().stream()
+                        .filter(bs -> bs.getShowSeat() != null)
+                        .map(bs -> bs.getShowSeat().getId())
+                        .toList()
+                    : List.of();
 
-            List<ShowSeat> lockedSeats = showSeatRepository.findByIdsWithLock(showSeatIds, booking.getShow().getId());
+            List<ShowSeat> lockedSeats = showSeatIds.isEmpty()
+                    ? List.of()
+                    : showSeatRepository.findByIdsWithLock(showSeatIds, booking.getShow().getId());
             LocalDateTime now = LocalDateTime.now();
 
             for (ShowSeat ss : lockedSeats) {

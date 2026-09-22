@@ -18,7 +18,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "seats",
        uniqueConstraints = @UniqueConstraint(columnNames = {"screen_id", "row_label", "seat_number"}))
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder @ToString
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Seat {
 
@@ -26,6 +26,7 @@ public class Seat {
     private UUID id;
 
     @JsonIgnore
+    @ToString.Exclude
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "screen_id", nullable = false)
     private Screen screen;

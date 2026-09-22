@@ -24,12 +24,24 @@ export const AiSearchBox: React.FC = () => {
 
   return (
     <div className="ai-box">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '0.75rem' }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          marginBottom: '0.75rem',
+        }}
+      >
         <Sparkles size={20} color="#e50914" />
-        <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>CineBook AI Assistant</h3>
+        <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>
+          CineBook AI Assistant
+        </h3>
       </div>
-      <p style={{ fontSize: '0.875rem', color: '#9ca3af', marginBottom: '1rem' }}>
-        Ask for movie recommendations in plain language (e.g. "I want an action movie in Hindi")
+      <p
+        style={{ fontSize: '0.875rem', color: '#9ca3af', marginBottom: '1rem' }}
+      >
+        Ask for movie recommendations in plain language (e.g. "I want an action
+        movie in Hindi")
       </p>
 
       <form onSubmit={handleRecommend} style={{ display: 'flex', gap: 10 }}>
@@ -41,12 +53,27 @@ export const AiSearchBox: React.FC = () => {
           onChange={(e) => setQuery(e.target.value)}
         />
         <button type="submit" className="btn btn-primary" disabled={loading}>
-          {loading ? <Loader2 className="animate-spin" size={18} /> : <Search size={18} />} Recommend
+          {loading ? (
+            <Loader2 className="animate-spin" size={18} />
+          ) : (
+            <Search size={18} />
+          )}{' '}
+          Recommend
         </button>
       </form>
 
       {recommendation && (
-        <div style={{ marginTop: '1rem', background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: 12, fontSize: '0.9rem', whiteSpace: 'pre-line', borderLeft: '4px solid #e50914' }}>
+        <div
+          style={{
+            marginTop: '1rem',
+            background: 'rgba(0,0,0,0.3)',
+            padding: '1rem',
+            borderRadius: 12,
+            fontSize: '0.9rem',
+            whiteSpace: 'pre-line',
+            borderLeft: '4px solid #e50914',
+          }}
+        >
           {recommendation}
         </div>
       )}

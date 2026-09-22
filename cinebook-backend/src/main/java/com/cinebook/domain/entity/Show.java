@@ -12,17 +12,19 @@ import java.util.UUID;
 /** A specific movie screening event: movie + screen + time + price. */
 @Entity
 @Table(name = "shows")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder @ToString
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Show {
 
     @Id @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @ToString.Exclude
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "movie_id", nullable = false)
     private Movie movie;
 
+    @ToString.Exclude
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "screen_id", nullable = false)
     private Screen screen;

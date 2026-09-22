@@ -1,6 +1,5 @@
 package com.cinebook.service.saga;
 
-import com.cinebook.domain.entity.Booking;
 import com.cinebook.domain.entity.ShowSeat;
 import com.cinebook.domain.enums.AccountType;
 import com.cinebook.domain.enums.BookingStatus;
@@ -67,7 +66,7 @@ public class BookingPaymentSagaCoordinator {
     public SagaExecutionResult runBookingSaga(BookingSagaContext context) {
         List<SagaStep<BookingSagaContext>> steps = List.of(
                 // -------------------------------------------------------------
-                // Step 1: Hold Seats
+                // Step 1: Hold Seats (Real Row Status & Expiration Update)
                 // -------------------------------------------------------------
                 SagaStep.of(
                         "HoldSeatStep",
@@ -76,6 +75,15 @@ public class BookingPaymentSagaCoordinator {
                                 throw new RuntimeException("Simulated Step 1 Failure: HoldSeatStep rejected");
                             }
                             log.info("Saga [Step 1]: Holding seats {} for user {}", ctx.getSeatIds(), ctx.getUserId());
+                            if (ctx.getSeatIds() != null && !ctx.getSeatIds().isEmpty()) {
+                                List<ShowSeat> seats = showSeatRepository.findAllById(ctx.getSeatIds());
+                                for (ShowSeat seat : seats) {
+                                    seat.setStatus(SeatStatus.LOCKED);
+                                    seat.setLockedBy(ctx.getUserId());
+                                    seat.setLockExpiresAt(LocalDateTime.now().plusMinutes(10));
+                                }
+                                showSeatRepository.saveAll(seats);
+                            }
                             ctx.setSeatsHeld(true);
                         },
                         ctx -> {
@@ -83,12 +91,23 @@ public class BookingPaymentSagaCoordinator {
                                 throw new RuntimeException("Simulated Compensation Failure: release seat lock failed");
                             }
                             log.info("Saga [Comp 1]: Releasing seat holds for {}", ctx.getSeatIds());
+                            if (ctx.getSeatIds() != null && !ctx.getSeatIds().isEmpty()) {
+                                List<ShowSeat> seats = showSeatRepository.findAllById(ctx.getSeatIds());
+                                for (ShowSeat seat : seats) {
+                                    if (ctx.getUserId() == null || ctx.getUserId().equals(seat.getLockedBy())) {
+                                        seat.setStatus(SeatStatus.AVAILABLE);
+                                        seat.setLockedBy(null);
+                                        seat.setLockExpiresAt(null);
+                                    }
+                                }
+                                showSeatRepository.saveAll(seats);
+                            }
                             ctx.setSeatsHeld(false);
                         }
                 ),
 
                 // -------------------------------------------------------------
-                // Step 2: Authorize / Debit Payment
+                // Step 2: Authorize / Debit Payment (Atomic Wallet Debit)
                 // -------------------------------------------------------------
                 SagaStep.of(
                         "AuthorizePaymentStep",
@@ -108,7 +127,7 @@ public class BookingPaymentSagaCoordinator {
                 ),
 
                 // -------------------------------------------------------------
-                // Step 3: Post Double-Entry Ledger
+                // Step 3: Post Double-Entry Ledger (Real Balanced Journal Entries)
                 // -------------------------------------------------------------
                 SagaStep.of(
                         "PostLedgerStep",
@@ -117,16 +136,34 @@ public class BookingPaymentSagaCoordinator {
                                 throw new RuntimeException("Simulated Step 3 Failure: Ledger database connection dropped");
                             }
                             log.info("Saga [Step 3]: Posting double-entry ledger transfer for tx {}", ctx.getTransactionId());
+                            ledgerService.recordTransfer(
+                                    ctx.getTransactionId(),
+                                    ctx.getUserId().toString(),
+                                    AccountType.USER_WALLET,
+                                    "ESCROW_GATEWAY",
+                                    AccountType.MERCHANT_ESCROW,
+                                    ctx.getAmount(),
+                                    "Saga double-entry ledger debit from wallet to escrow"
+                            );
                             ctx.setLedgerPosted(true);
                         },
                         ctx -> {
                             log.info("Saga [Comp 3]: Reversing ledger entries for tx {}", ctx.getTransactionId());
+                            ledgerService.recordTransfer(
+                                    ctx.getTransactionId(),
+                                    "ESCROW_GATEWAY",
+                                    AccountType.MERCHANT_ESCROW,
+                                    ctx.getUserId().toString(),
+                                    AccountType.USER_WALLET,
+                                    ctx.getAmount(),
+                                    "Saga compensating reversal ledger credit from escrow to wallet"
+                            );
                             ctx.setLedgerPosted(false);
                         }
                 ),
 
                 // -------------------------------------------------------------
-                // Step 4: Confirm Booking & Issue Ticket
+                // Step 4: Confirm Booking & Issue Ticket (Real DB Status Change)
                 // -------------------------------------------------------------
                 SagaStep.of(
                         "ConfirmBookingStep",
@@ -135,10 +172,22 @@ public class BookingPaymentSagaCoordinator {
                                 throw new RuntimeException("Simulated Step 4 Failure: Ticket issuance / notification service down");
                             }
                             log.info("Saga [Step 4]: Confirming booking {}", ctx.getBookingId());
+                            if (ctx.getBookingId() != null) {
+                                bookingRepository.findById(ctx.getBookingId()).ifPresent(booking -> {
+                                    booking.setStatus(BookingStatus.CONFIRMED);
+                                    bookingRepository.save(booking);
+                                });
+                            }
                             ctx.setBookingConfirmed(true);
                         },
                         ctx -> {
                             log.info("Saga [Comp 4]: Cancelling/expiring booking {}", ctx.getBookingId());
+                            if (ctx.getBookingId() != null) {
+                                bookingRepository.findById(ctx.getBookingId()).ifPresent(booking -> {
+                                    booking.setStatus(BookingStatus.CANCELLED);
+                                    bookingRepository.save(booking);
+                                });
+                            }
                             ctx.setBookingConfirmed(false);
                         }
                 )

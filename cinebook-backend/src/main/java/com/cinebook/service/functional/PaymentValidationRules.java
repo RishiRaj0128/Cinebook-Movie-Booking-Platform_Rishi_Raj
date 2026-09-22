@@ -1,6 +1,5 @@
 package com.cinebook.service.functional;
 
-import com.cinebook.domain.model.payment.Money;
 import com.cinebook.domain.model.payment.PaymentRequestRecord;
 
 import java.util.Set;

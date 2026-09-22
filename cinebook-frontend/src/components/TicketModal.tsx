@@ -1,5 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { X, CheckCircle, Calendar, MapPin, Clock, Printer, Navigation, User, ShieldCheck, RefreshCw, Lock } from 'lucide-react';
+import {
+  X,
+  CheckCircle,
+  Calendar,
+  MapPin,
+  Clock,
+  Printer,
+  Navigation,
+  User,
+  ShieldCheck,
+  RefreshCw,
+  Lock,
+} from 'lucide-react';
 import { Booking } from '../types';
 import QRCode from 'qrcode';
 
@@ -8,7 +20,10 @@ interface TicketModalProps {
   onClose: () => void;
 }
 
-export const TicketModal: React.FC<TicketModalProps> = ({ booking, onClose }) => {
+export const TicketModal: React.FC<TicketModalProps> = ({
+  booking,
+  onClose,
+}) => {
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [secondsLeft, setSecondsLeft] = useState<number>(15);
   const [dynamicToken, setDynamicToken] = useState<string>('');
@@ -18,9 +33,27 @@ export const TicketModal: React.FC<TicketModalProps> = ({ booking, onClose }) =>
   const screen = show?.screen;
   const theater = screen?.theater;
 
-  const seatsList = booking.bookingSeats?.map(bs => `${bs.showSeat?.seat?.rowLabel || ''}${bs.showSeat?.seat?.seatNumber || ''}`).join(', ') || 'N/A';
-  const showDate = show?.startTime ? new Date(show.startTime).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A';
-  const showTime = show?.startTime ? new Date(show.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A';
+  const seatsList =
+    booking.bookingSeats
+      ?.map(
+        (bs) =>
+          `${bs.showSeat?.seat?.rowLabel || ''}${bs.showSeat?.seat?.seatNumber || ''}`
+      )
+      .join(', ') || 'N/A';
+  const showDate = show?.startTime
+    ? new Date(show.startTime).toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : 'N/A';
+  const showTime = show?.startTime
+    ? new Date(show.startTime).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : 'N/A';
   const totalRupees = (booking.totalAmount / 100).toFixed(2);
   const userName = booking.user?.fullName || 'Guest Customer';
   const userEmail = booking.user?.email || 'N/A';
@@ -66,7 +99,7 @@ export const TicketModal: React.FC<TicketModalProps> = ({ booking, onClose }) =>
     `Email: ${userEmail}`,
     `Booking Ref: ${booking.id}`,
     `Total Paid: Rs.${totalRupees}`,
-    `Status: CONFIRMED & VERIFIED`
+    `Status: CONFIRMED & VERIFIED`,
   ].join('\n');
 
   // Generate QR Code when dynamicToken updates
@@ -79,11 +112,11 @@ export const TicketModal: React.FC<TicketModalProps> = ({ booking, onClose }) =>
       width: 320,
       color: {
         dark: '#000000',
-        light: '#ffffff'
-      }
+        light: '#ffffff',
+      },
     })
-      .then(url => setQrDataUrl(url))
-      .catch(err => console.error('QR code generation error:', err));
+      .then((url) => setQrDataUrl(url))
+      .catch((err) => console.error('QR code generation error:', err));
   }, [dynamicToken, booking]);
 
   const handleCopy = () => {
@@ -276,35 +309,71 @@ export const TicketModal: React.FC<TicketModalProps> = ({ booking, onClose }) =>
               </div>
             </div>
           </div>
-          <script>
-            window.onload = function() {
-              window.print();
-              setTimeout(function() { window.close(); }, 500);
-            };
-          </script>
         </body>
       </html>
     `);
     printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      try {
+        printWindow.print();
+        printWindow.close();
+      } catch (e) {
+        // print window handling
+      }
+    }, 250);
   };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div
         className="modal-content"
-        style={{ maxWidth: 680, padding: 0, overflow: 'hidden', border: '1px solid rgba(229,9,20,0.4)', boxShadow: '0 20px 50px rgba(229,9,20,0.25)' }}
+        style={{
+          maxWidth: 680,
+          padding: 0,
+          overflow: 'hidden',
+          border: '1px solid rgba(229,9,20,0.4)',
+          boxShadow: '0 20px 50px rgba(229,9,20,0.25)',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Banner Header */}
-        <div style={{ background: 'linear-gradient(135deg, #e50914 0%, #99000d 100%)', padding: '1.25rem 1.5rem', color: '#ffffff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div
+          style={{
+            background: 'linear-gradient(135deg, #e50914 0%, #99000d 100%)',
+            padding: '1.25rem 1.5rem',
+            color: '#ffffff',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <CheckCircle size={24} color="#ffffff" />
             <div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>Booking Confirmed!</h3>
-              <p style={{ fontSize: '0.8rem', opacity: 0.9, margin: 0 }}>Official Dynamic Anti-Fraud Entry Pass</p>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>
+                Booking Confirmed!
+              </h3>
+              <p style={{ fontSize: '0.8rem', opacity: 0.9, margin: 0 }}>
+                Official Dynamic Anti-Fraud Entry Pass
+              </p>
             </div>
           </div>
-          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'rgba(255,255,255,0.2)',
+              border: 'none',
+              color: '#fff',
+              borderRadius: '50%',
+              width: 32,
+              height: 32,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+            }}
+          >
             <X size={18} />
           </button>
         </div>
@@ -312,56 +381,198 @@ export const TicketModal: React.FC<TicketModalProps> = ({ booking, onClose }) =>
         {/* Cinema Ticket Card Body */}
         <div style={{ padding: '1.5rem', background: '#0f172a' }}>
           {/* Customer / Holder Info Bar */}
-          <div style={{ background: 'rgba(255,255,255,0.06)', padding: '10px 14px', borderRadius: 10, marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <div
+            style={{
+              background: 'rgba(255,255,255,0.06)',
+              padding: '10px 14px',
+              borderRadius: 10,
+              marginBottom: '1.25rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              border: '1px solid rgba(255,255,255,0.1)',
+            }}
+          >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <User size={16} color="#e50914" />
-              <span style={{ fontSize: '0.875rem', fontWeight: 700, color: '#f8fafc' }}>{userName}</span>
-              <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>({userEmail})</span>
+              <span
+                style={{
+                  fontSize: '0.875rem',
+                  fontWeight: 700,
+                  color: '#f8fafc',
+                }}
+              >
+                {userName}
+              </span>
+              <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                ({userEmail})
+              </span>
             </div>
-            <span style={{ fontSize: '0.75rem', background: '#10b981', color: '#fff', padding: '2px 8px', borderRadius: 6, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span
+              style={{
+                fontSize: '0.75rem',
+                background: '#10b981',
+                color: '#fff',
+                padding: '2px 8px',
+                borderRadius: 6,
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
               <ShieldCheck size={12} /> VERIFIED PASS
             </span>
           </div>
 
           {/* Main Info Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 20, marginBottom: '1.25rem' }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '120px 1fr',
+              gap: 20,
+              marginBottom: '1.25rem',
+            }}
+          >
             {/* Poster */}
             <img
-              src={movie?.posterUrl || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&q=80'}
+              src={
+                movie?.posterUrl ||
+                'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&q=80'
+              }
               alt={movie?.title}
-              style={{ width: 120, height: 175, borderRadius: 12, objectFit: 'cover', boxShadow: '0 8px 20px rgba(0,0,0,0.6)' }}
+              style={{
+                width: 120,
+                height: 175,
+                borderRadius: 12,
+                objectFit: 'cover',
+                boxShadow: '0 8px 20px rgba(0,0,0,0.6)',
+              }}
             />
 
             {/* Movie & Venue Info */}
-            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+              }}
+            >
               <div>
-                <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 1, color: '#e50914', fontWeight: 800 }}>
+                <span
+                  style={{
+                    fontSize: '0.75rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: 1,
+                    color: '#e50914',
+                    fontWeight: 800,
+                  }}
+                >
                   {movie?.genre} • {movie?.language}
                 </span>
-                <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#f8fafc', margin: '4px 0 8px 0', lineHeight: 1.2 }}>
+                <h2
+                  style={{
+                    fontSize: '1.6rem',
+                    fontWeight: 900,
+                    color: '#f8fafc',
+                    margin: '4px 0 8px 0',
+                    lineHeight: 1.2,
+                  }}
+                >
                   {movie?.title}
                 </h2>
-                <div style={{ fontSize: '0.85rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div
+                  style={{
+                    fontSize: '0.85rem',
+                    color: '#94a3b8',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
                   <MapPin size={15} color="#e50914" />
-                  <strong style={{ color: '#f1f5f9' }}>{theater?.name || 'CineBook Theater'}</strong>
-                  {theater?.city && <span style={{ background: 'rgba(229,9,20,0.2)', color: '#e50914', padding: '1px 6px', borderRadius: 8, fontSize: '0.75rem', fontWeight: 700 }}>{theater.city}</span>}
+                  <strong style={{ color: '#f1f5f9' }}>
+                    {theater?.name || 'CineBook Theater'}
+                  </strong>
+                  {theater?.city && (
+                    <span
+                      style={{
+                        background: 'rgba(229,9,20,0.2)',
+                        color: '#e50914',
+                        padding: '1px 6px',
+                        borderRadius: 8,
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                      }}
+                    >
+                      {theater.city}
+                    </span>
+                  )}
                 </div>
                 {theater?.address && (
-                  <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4, paddingLeft: 21 }}>
+                  <div
+                    style={{
+                      fontSize: '0.8rem',
+                      color: '#64748b',
+                      marginTop: 4,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      paddingLeft: 21,
+                    }}
+                  >
                     <Navigation size={12} color="#64748b" /> {theater.address}
                   </div>
                 )}
               </div>
 
               {/* Date & Screen Pills */}
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
-                <div style={{ background: 'rgba(255,255,255,0.08)', padding: '6px 12px', borderRadius: 8, fontSize: '0.825rem', color: '#cbd5e1', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 10,
+                  flexWrap: 'wrap',
+                  marginTop: 12,
+                }}
+              >
+                <div
+                  style={{
+                    background: 'rgba(255,255,255,0.08)',
+                    padding: '6px 12px',
+                    borderRadius: 8,
+                    fontSize: '0.825rem',
+                    color: '#cbd5e1',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
                   <Calendar size={14} color="#e50914" /> <span>{showDate}</span>
                 </div>
-                <div style={{ background: 'rgba(255,255,255,0.08)', padding: '6px 12px', borderRadius: 8, fontSize: '0.825rem', color: '#cbd5e1', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div
+                  style={{
+                    background: 'rgba(255,255,255,0.08)',
+                    padding: '6px 12px',
+                    borderRadius: 8,
+                    fontSize: '0.825rem',
+                    color: '#cbd5e1',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
                   <Clock size={14} color="#e50914" /> <span>{showTime}</span>
                 </div>
-                <div style={{ background: 'rgba(229,9,20,0.15)', padding: '6px 12px', borderRadius: 8, fontSize: '0.825rem', color: '#e50914', fontWeight: 700 }}>
+                <div
+                  style={{
+                    background: 'rgba(229,9,20,0.15)',
+                    padding: '6px 12px',
+                    borderRadius: 8,
+                    fontSize: '0.825rem',
+                    color: '#e50914',
+                    fontWeight: 700,
+                  }}
+                >
                   {screen?.name || 'Auditorium 1'}
                 </div>
               </div>
@@ -369,47 +580,195 @@ export const TicketModal: React.FC<TicketModalProps> = ({ booking, onClose }) =>
           </div>
 
           {/* Ticket Stub Perforated Line */}
-          <div style={{ borderTop: '2px dashed rgba(255,255,255,0.15)', margin: '1.25rem 0', position: 'relative' }}>
-            <div style={{ position: 'absolute', left: -32, top: -12, width: 24, height: 24, borderRadius: '50%', background: '#000' }} />
-            <div style={{ position: 'absolute', right: -32, top: -12, width: 24, height: 24, borderRadius: '50%', background: '#000' }} />
+          <div
+            style={{
+              borderTop: '2px dashed rgba(255,255,255,0.15)',
+              margin: '1.25rem 0',
+              position: 'relative',
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                left: -32,
+                top: -12,
+                width: 24,
+                height: 24,
+                borderRadius: '50%',
+                background: '#000',
+              }}
+            />
+            <div
+              style={{
+                position: 'absolute',
+                right: -32,
+                top: -12,
+                width: 24,
+                height: 24,
+                borderRadius: '50%',
+                background: '#000',
+              }}
+            />
           </div>
 
           {/* Bottom Section: Seats & Dynamic Refreshing QR Code */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: 20, alignItems: 'center' }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 200px',
+              gap: 20,
+              alignItems: 'center',
+            }}
+          >
             {/* Left Details */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ background: 'rgba(255,255,255,0.04)', padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.08)' }}>
-                <span style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>Reserved Seats</span>
-                <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#e50914', marginTop: 2 }}>
+              <div
+                style={{
+                  background: 'rgba(255,255,255,0.04)',
+                  padding: '10px 14px',
+                  borderRadius: 10,
+                  border: '1px solid rgba(255,255,255,0.08)',
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: '0.75rem',
+                    color: '#94a3b8',
+                    textTransform: 'uppercase',
+                    fontWeight: 700,
+                  }}
+                >
+                  Reserved Seats
+                </span>
+                <div
+                  style={{
+                    fontSize: '1.25rem',
+                    fontWeight: 900,
+                    color: '#e50914',
+                    marginTop: 2,
+                  }}
+                >
                   {seatsList}
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', background: 'rgba(255,255,255,0.04)', padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  background: 'rgba(255,255,255,0.04)',
+                  padding: '10px 14px',
+                  borderRadius: 10,
+                  border: '1px solid rgba(255,255,255,0.08)',
+                }}
+              >
                 <div>
-                  <span style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>Total Paid</span>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#10b981' }}>₹{totalRupees}</div>
+                  <span
+                    style={{
+                      fontSize: '0.75rem',
+                      color: '#94a3b8',
+                      textTransform: 'uppercase',
+                      fontWeight: 700,
+                    }}
+                  >
+                    Total Paid
+                  </span>
+                  <div
+                    style={{
+                      fontSize: '1.1rem',
+                      fontWeight: 800,
+                      color: '#10b981',
+                    }}
+                  >
+                    ₹{totalRupees}
+                  </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>Booking Ref</span>
-                  <div style={{ fontSize: '0.75rem', color: '#cbd5e1', fontWeight: 600, fontFamily: 'monospace', marginTop: 4 }}>
+                  <span
+                    style={{
+                      fontSize: '0.75rem',
+                      color: '#94a3b8',
+                      textTransform: 'uppercase',
+                      fontWeight: 700,
+                    }}
+                  >
+                    Booking Ref
+                  </span>
+                  <div
+                    style={{
+                      fontSize: '0.75rem',
+                      color: '#cbd5e1',
+                      fontWeight: 600,
+                      fontFamily: 'monospace',
+                      marginTop: 4,
+                    }}
+                  >
                     {booking.id.substring(0, 13)}...
                   </div>
                 </div>
               </div>
 
               {/* Anti-Fraud Banner */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(16,185,129,0.2)' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: '0.75rem',
+                  color: '#10b981',
+                  background: 'rgba(16,185,129,0.1)',
+                  padding: '6px 10px',
+                  borderRadius: 8,
+                  border: '1px solid rgba(16,185,129,0.2)',
+                }}
+              >
                 <Lock size={13} />
-                <span>Anti-Screenshot Protection: Token auto-refreshes every 15s.</span>
+                <span>
+                  Anti-Screenshot Protection: Token auto-refreshes every 15s.
+                </span>
               </div>
             </div>
 
             {/* Dynamic Self-Refreshing QR Code Container */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#ffffff', padding: 12, borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.5)', border: '2px solid #e50914', position: 'relative' }}>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                background: '#ffffff',
+                padding: 12,
+                borderRadius: 12,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                border: '2px solid #e50914',
+                position: 'relative',
+              }}
+            >
               {/* Pulsating Live Security Badge */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.65rem', fontWeight: 800, color: '#10b981', marginBottom: 6, background: '#ecfdf5', padding: '2px 8px', borderRadius: 10, border: '1px solid #a7f3d0' }}>
-                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981', display: 'inline-block', boxShadow: '0 0 8px #10b981' }} />
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: '0.65rem',
+                  fontWeight: 800,
+                  color: '#10b981',
+                  marginBottom: 6,
+                  background: '#ecfdf5',
+                  padding: '2px 8px',
+                  borderRadius: 10,
+                  border: '1px solid #a7f3d0',
+                }}
+              >
+                <span
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: '50%',
+                    background: '#10b981',
+                    display: 'inline-block',
+                    boxShadow: '0 0 8px #10b981',
+                  }}
+                />
                 LIVE ANTI-FRAUD QR
               </div>
 
@@ -420,23 +779,55 @@ export const TicketModal: React.FC<TicketModalProps> = ({ booking, onClose }) =>
                   style={{ width: 150, height: 150, objectFit: 'contain' }}
                 />
               ) : (
-                <div style={{ width: 150, height: 150, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#000', fontSize: '0.75rem' }}>Generating QR...</div>
+                <div
+                  style={{
+                    width: 150,
+                    height: 150,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#000',
+                    fontSize: '0.75rem',
+                  }}
+                >
+                  Generating QR...
+                </div>
               )}
 
               {/* Countdown Progress */}
               <div style={{ marginTop: 6, width: '100%', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.65rem', color: '#334155', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                  <RefreshCw size={11} className="spin-slow" /> Auto-refreshes in {secondsLeft}s
+                <div
+                  style={{
+                    fontSize: '0.65rem',
+                    color: '#334155',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 4,
+                  }}
+                >
+                  <RefreshCw size={11} className="spin-slow" /> Auto-refreshes
+                  in {secondsLeft}s
                 </div>
 
                 {/* Animated countdown bar */}
-                <div style={{ width: '100%', height: 3, background: '#e2e8f0', borderRadius: 2, marginTop: 4, overflow: 'hidden' }}>
+                <div
+                  style={{
+                    width: '100%',
+                    height: 3,
+                    background: '#e2e8f0',
+                    borderRadius: 2,
+                    marginTop: 4,
+                    overflow: 'hidden',
+                  }}
+                >
                   <div
                     style={{
                       height: '100%',
                       background: '#e50914',
                       width: `${(secondsLeft / 15) * 100}%`,
-                      transition: 'width 1s linear'
+                      transition: 'width 1s linear',
                     }}
                   />
                 </div>
@@ -446,12 +837,34 @@ export const TicketModal: React.FC<TicketModalProps> = ({ booking, onClose }) =>
         </div>
 
         {/* Footer Actions */}
-        <div style={{ padding: '1rem 1.5rem', background: '#0b0f19', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div
+          style={{
+            padding: '1rem 1.5rem',
+            background: '#0b0f19',
+            borderTop: '1px solid rgba(255,255,255,0.08)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
           <div style={{ display: 'flex', gap: 10 }}>
-            <button className="btn btn-secondary" onClick={handlePrint} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button
+              className="btn btn-secondary"
+              onClick={handlePrint}
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            >
               <Printer size={16} /> Print / Save PDF
             </button>
-            <button className="btn btn-secondary" onClick={handleCopy} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem' }}>
+            <button
+              className="btn btn-secondary"
+              onClick={handleCopy}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: '0.85rem',
+              }}
+            >
               {copied ? '✓ Copied Details!' : '📋 Copy Details'}
             </button>
           </div>

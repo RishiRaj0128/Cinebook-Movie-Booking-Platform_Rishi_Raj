@@ -1,15 +1,12 @@
 package com.cinebook.service.idempotency;
 
 import com.cinebook.domain.entity.IdempotencyRecord;
-import com.cinebook.domain.repository.IdempotencyRepository;
 import com.cinebook.exception.IdempotencyConflictException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -21,15 +18,16 @@ import java.util.function.Supplier;
 
 /**
  * Enterprise idempotency service ensuring no duplicate payments, double bookings, or conflicting replays.
- * Backed by database UNIQUE(idempotency_key) constraint for cluster-wide multi-instance safety,
- * paired with thread-level synchronization for single-node efficiency.
+ * Backed by an atomic insert-claim state machine (PROCESSING -> COMPLETED/FAILED) via database
+ * UNIQUE(idempotency_key) constraint in REQUIRES_NEW transactions, completely eliminating distributed
+ * race conditions across multi-instance clusters before any business action executes.
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class IdempotencyService {
 
-    private final IdempotencyRepository idempotencyRepository;
+    private final IdempotencyClaimService claimService;
     private final ObjectMapper objectMapper;
 
     @jakarta.annotation.PostConstruct
@@ -37,7 +35,7 @@ public class IdempotencyService {
         objectMapper.findAndRegisterModules();
     }
 
-    // Mutex map serializing concurrent threads on the same JVM competing for the same key
+    // Single-node JVM synchronization map
     private final ConcurrentHashMap<String, Object> keyLocks = new ConcurrentHashMap<>();
 
     /**
@@ -85,56 +83,63 @@ public class IdempotencyService {
     }
 
     private <T> T executeInternal(String idempotencyKey, String requestHash, Class<T> responseClass, Supplier<T> action) {
-        try {
-            // 1. Check if record already exists in database
-            Optional<IdempotencyRecord> existingOpt = idempotencyRepository.findByIdempotencyKey(idempotencyKey);
-            if (existingOpt.isPresent()) {
-                return parseAndReturnCached(existingOpt.get(), requestHash, responseClass, idempotencyKey);
-            }
+        // 1. Atomic claim prior to any business execution
+        IdempotencyClaimService.ClaimResult claim = claimService.claim(idempotencyKey, requestHash);
 
-            // 2. Execute business action
-            T result = action.get();
-
-            // 3. Atomically persist and flush to database (triggers DB unique constraint if raced by another node)
-            String serializedResponse = objectMapper.writeValueAsString(result);
-            IdempotencyRecord record = IdempotencyRecord.builder()
-                    .idempotencyKey(idempotencyKey)
-                    .requestHash(requestHash)
-                    .status("COMPLETED")
-                    .responseStatusCode(200)
-                    .responseBody(serializedResponse)
-                    .build();
-
-            idempotencyRepository.saveAndFlush(record);
-            log.info("Stored new idempotency record in DB for key '{}'", idempotencyKey);
-            return result;
-
-        } catch (DataIntegrityViolationException e) {
-            // 4. Multi-instance cluster safety: Caught database unique constraint violation!
-            log.info("Database UNIQUE constraint triggered for key '{}'. Fetching committed response from winner.", idempotencyKey);
-            IdempotencyRecord winnerRecord = idempotencyRepository.findByIdempotencyKey(idempotencyKey)
-                    .orElseThrow(() -> new IllegalStateException("Failed to find idempotency record after DB unique violation: " + idempotencyKey, e));
-            return parseAndReturnCached(winnerRecord, requestHash, responseClass, idempotencyKey);
-
-        } catch (JsonProcessingException e) {
-            throw new IllegalStateException("Failed to serialize/deserialize response for key: " + idempotencyKey, e);
+        // 2. If already completed, return cached response verbatim immediately
+        if (claim.status() == IdempotencyClaimService.ClaimStatus.ALREADY_COMPLETED) {
+            log.info("Idempotent replay for key '{}'. Returning cached response.", idempotencyKey);
+            return deserializeResponse(claim.record().getResponseBody(), responseClass, idempotencyKey);
         }
+
+        // 3. If another node is actively processing, await completion (up to 5 seconds)
+        if (claim.status() == IdempotencyClaimService.ClaimStatus.ALREADY_PROCESSING) {
+            log.info("Key '{}' is currently being processed by another cluster instance. Awaiting completion.", idempotencyKey);
+            for (int i = 0; i < 50; i++) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException("Interrupted while awaiting idempotent response for key: " + idempotencyKey, e);
+                }
+
+                Optional<IdempotencyRecord> polled = claimService.findRecord(idempotencyKey);
+                if (polled.isPresent()) {
+                    IdempotencyRecord record = polled.get();
+                    if ("COMPLETED".equals(record.getStatus())) {
+                        log.info("Key '{}' completed by owner node. Returning cached response.", idempotencyKey);
+                        return deserializeResponse(record.getResponseBody(), responseClass, idempotencyKey);
+                    }
+                    if ("FAILED".equals(record.getStatus())) {
+                        throw new IllegalStateException("Concurrent transaction execution failed for idempotency key: " + idempotencyKey);
+                    }
+                }
+            }
+            throw new IdempotencyConflictException("Concurrent request execution timeout for idempotency key: " + idempotencyKey);
+        }
+
+        // 4. Current node won the claim -> execute business action
+        T result;
+        try {
+            result = action.get();
+        } catch (RuntimeException ex) {
+            claimService.markFailed(idempotencyKey, ex.getMessage());
+            throw ex;
+        }
+
+        // 5. Mark claim as COMPLETED with verbatim serialized response
+        claimService.markCompleted(idempotencyKey, result, 200);
+        return result;
     }
 
-    private <T> T parseAndReturnCached(IdempotencyRecord existing, String requestHash, Class<T> responseClass, String idempotencyKey) {
-        // Detect mismatched request body (client bug / malicious key reuse)
-        if (!existing.getRequestHash().equals(requestHash)) {
-            log.warn("Idempotency conflict detected for key '{}'. Existing hash: {}, incoming hash: {}",
-                    idempotencyKey, existing.getRequestHash(), requestHash);
-            throw new IdempotencyConflictException(
-                    "Idempotency-Key '" + idempotencyKey + "' was already used with a different request payload."
-            );
-        }
-
-        // Return cached response verbatim
-        log.info("Idempotent replay for key '{}'. Returning cached verbatim response from DB.", idempotencyKey);
+    private <T> T deserializeResponse(String json, Class<T> responseClass, String idempotencyKey) {
         try {
-            return objectMapper.readValue(existing.getResponseBody(), responseClass);
+            if (responseClass.equals(String.class)) {
+                @SuppressWarnings("unchecked")
+                T str = (T) (json.startsWith("\"") && json.endsWith("\"") ? objectMapper.readValue(json, String.class) : json);
+                return str;
+            }
+            return objectMapper.readValue(json, responseClass);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to deserialize cached response for key: " + idempotencyKey, e);
         }

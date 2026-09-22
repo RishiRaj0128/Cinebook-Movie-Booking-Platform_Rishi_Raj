@@ -45,7 +45,7 @@ public class PricingUtil {
     }
 
     public String formatINR(int paise) {
-        return NumberFormat.getCurrencyInstance(new Locale("en", "IN"))
+        return NumberFormat.getCurrencyInstance(Locale.of("en", "IN"))
                 .format(paise / 100.0);
     }
 }
