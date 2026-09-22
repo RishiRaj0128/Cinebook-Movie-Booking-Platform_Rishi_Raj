@@ -32,11 +32,21 @@ Built with a **Spring Boot 3 (Java 21)** REST backend, **Neon Cloud PostgreSQL**
    - [5.2 Dynamic Tiered Pricing Model](#52-dynamic-tiered-pricing-model)
    - [5.3 Universal QR Gate Pass Engine](#53-universal-qr-gate-pass-engine)
    - [5.4 TMDB Indian Regional Cinema Sync](#54-tmdb-indian-regional-cinema-sync)
-6. [REST API Documentation](#-rest-api-documentation)
-7. [Security & Authentication Model](#-security--authentication-model)
-8. [Repository Directory Structure](#-repository-directory-structure)
-9. [Local Development & Setup Guide](#-local-development--setup-guide)
-10. [License & Maintainers](#-license--maintainers)
+6. [Financial Transaction & Payment Engineering (Enterprise Deep Dive)](#-financial-transaction--payment-engineering-enterprise-deep-dive)
+   - [6.1 Functional Domain Modeling & Rule Engine](#61-functional-domain-modeling--rule-engine)
+   - [6.2 Cryptographic Idempotency](#62-cryptographic-idempotency)
+   - [6.3 Concurrency Control & Deadlock-Free Ordering](#63-concurrency-control--deadlock-free-ordering)
+   - [6.4 Double-Entry Append-Only Ledger](#64-double-entry-append-only-ledger)
+   - [6.5 Strict Finite State Machine](#65-strict-finite-state-machine)
+   - [6.6 Smallest Integer Currency Discipline (Paise)](#66-smallest-integer-currency-discipline-paise)
+   - [6.7 Saga Pattern & Distributed Compensation](#67-saga-pattern--distributed-compensation)
+   - [6.8 Webhook Ingestion & Replay Deduplication](#68-webhook-ingestion--replay-deduplication)
+   - [6.9 Induced Failure Recovery & Post-Mortem Log](#69-induced-failure-recovery--post-mortem-log)
+7. [REST API Documentation](#-rest-api-documentation)
+8. [Security & Authentication Model](#-security--authentication-model)
+9. [Repository Directory Structure](#-repository-directory-structure)
+10. [Local Development & Setup Guide](#-local-development--setup-guide)
+11. [License & Maintainers](#-license--maintainers)
 
 ---
 
@@ -241,6 +251,68 @@ Status: CONFIRMED
 Pass Verification URL: http://localhost:3000/?ticketId=UUID
 ```
 Because the QR payload contains raw text, any phone lens or gate scanner reads the pass details instantly.
+
+---
+
+## 💳 Financial Transaction & Payment Engineering (Enterprise Deep Dive)
+
+CineBook's payment and transaction core is designed from the ground up to behave like a real financial transaction engine (reflecting the functional-programming rigor and distributed systems discipline practiced at companies like **Juspay**).
+
+### 6.1 Functional Domain Modeling & Rule Engine
+- **Immutable Domain Records**: All models (`PaymentRequestRecord`, `TransactionResultRecord`, `LedgerEntryRecord`, `Money`) are defined as Java 21 records or final value objects with zero setters and complete immutability.
+- **Pure Rule Predicates**: Fraud, balance, velocity, and transaction limit checks are modeled as pure functions (`Predicate<PaymentRequestRecord>` and `PaymentRule`).
+- **Comprehensive Failure Accumulation**: Unlike a standard `.and()` predicate chain that short-circuits on the first error, CineBook's `RuleEvaluationPipeline` evaluates all rules in one pass, returning a full `List<String>` of failed rule reasons for auditing and telemetry.
+- **Railway-Oriented Monadic Flow**: Eliminates `null` checks and try/catch sprawl using `Optional` and higher-order functions:
+  $$\text{validateRequest}(req) \xrightarrow{\text{flatMap}} \text{checkSeatHold}(req) \xrightarrow{\text{flatMap}} \text{authorizePayment}(req) \xrightarrow{\text{flatMap}} \text{postLedger}(req)$$
+- 📖 *For a deep dive on applied FP principles and honest Java limitations (no ADTs, no monadic error accumulation like Haskell's Validation), read [PAYMENT_FP_NOTES.md](file:///d:/Movie%20Booking%20System-II/PAYMENT_FP_NOTES.md).*
+
+### 6.2 Cryptographic Idempotency
+- **Client-Generated Keys**: Every payment-initiating request supports an `Idempotency-Key` header.
+- **Payload Hash Matching**: The engine calculates a SHA-256 hash of the request payload.
+- **Verbatim Cached Replay**: Identical requests return the stored response verbatim with zero redundant charges or database mutations.
+- **Conflict Detection (HTTP 409)**: If an existing key arrives with a different request payload, the request is rejected with `IdempotencyConflictException` to catch client bugs.
+- **Atomic Persistence**: Handled atomically with database transactions.
+
+### 6.3 Concurrency Control & Deadlock-Free Ordering
+- **Pessimistic Row Locking**: Both seat holds and user wallet debits use explicit PostgreSQL row-level locks (`SELECT ... FOR UPDATE` via `LockModeType.PESSIMISTIC_WRITE`).
+- **Pessimistic vs Optimistic Rationale**: In high-demand ticketing ("blockbuster drop" scenarios), optimistic locking (`@Version`) causes massive transaction rollbacks and CPU-wasting retry storms. Pessimistic locking immediately serializes contenders at the database row level.
+- **Lock Timeout Guardrail**: Enforces `jakarta.persistence.lock.timeout = 3000ms`. If a transaction stalls, contenders fail fast rather than hanging worker threads indefinitely.
+- **Deterministic Lock Ordering (Seat $\rightarrow$ Wallet)**: All transactions touching multiple locked resources strictly acquire locks in canonical order: **Seat row lock FIRST, then Wallet row lock SECOND**. This mathematically eliminates cyclic wait-for graphs and prevents database deadlocks.
+- **Clean Contention Rejection**: Contenders queue sequentially; the 1st thread acquires the lock and debits the balance to 0. Subsequent threads acquire the lock in turn and are rejected with clean **business rule exceptions** (`InsufficientBalanceException` / `SeatsUnavailableException`), not low-level lock crashes.
+
+### 6.4 Double-Entry Append-Only Ledger
+- **No In-Place Balance Drift**: Replaces procedural balance mutations (`UPDATE accounts SET balance = balance - 100`) with an append-only `ledger_entries` table. Rows are **NEVER updated or deleted**.
+- **Balanced Transfers**: Every transaction writes exactly two entries (one `DEBIT` and one `CREDIT`) in the same DB transaction:
+  $$\sum \text{CREDIT} = \sum \text{DEBIT}$$
+- **Zero-Sum Reconciliation Audit**: Automated reconciliation endpoint (`/api/payments/reconciliation/ledger`) executes:
+  $$\sum (\text{CASE WHEN direction = 'CREDIT' THEN amount ELSE -amount END}) = 0$$
+
+### 6.5 Strict Finite State Machine
+- **Explicit Lifecycle**: Transactions progress through a formal state machine:
+  $$\text{CREATED} \rightarrow \text{PROCESSING} \rightarrow \text{AUTHORIZED} \rightarrow \text{CAPTURED} \rightarrow \text{SETTLED}$$
+  $$\text{Side branches: } \text{FAILED}, \text{REFUNDED}, \text{PARTIALLY\_REFUNDED}$$
+- **Centralized Enforcement**: `TransactionStateMachine` rejects any illegal transition (e.g. `SETTLED` $\rightarrow$ `PROCESSING`) with `InvalidStateTransitionException`.
+- **Immutable Audit Trail**: Every state transition is written to `transaction_state_transitions` with timestamp, trigger event, and metadata.
+
+### 6.6 Smallest Integer Currency Discipline (Paise)
+- All monetary math is strictly stored and calculated as integers in the smallest currency unit (**paise**), eliminating IEEE 754 floating-point rounding errors ($0.1 + 0.2 \neq 0.3$).
+- Decimal rupees are converted strictly at API boundaries using the `Money` value object.
+
+### 6.7 Saga Pattern & Distributed Compensation
+- Multi-step booking flows are modeled as an ordered pipeline of `(action, compensation)` pairs:
+  1. `ReserveSeatStep` $\leftrightarrow$ `ReleaseSeatCompensation`
+  2. `DebitWalletStep` $\leftrightarrow$ `RefundWalletCompensation`
+  3. `PostLedgerStep` $\leftrightarrow$ `ReverseLedgerCompensation`
+- If any downstream step fails, completed steps are rolled back in reverse order.
+- *Compensation Failures*: Any failure during compensation itself is marked as `COMPENSATION_FAILED`, logged with CRITICAL severity, and queued for the background reconciliation sweep.
+
+### 6.8 Webhook Ingestion & Replay Deduplication
+- **Mock Payment Gateway**: Simulates realistic asynchronous webhook delivery with induced network timeouts and deliberate duplicate delivery (at-least-once delivery).
+- **HMAC-SHA256 Verification**: Constant-time signature verification prevents tampering and unauthorized requests.
+- **Event Deduplication**: Webhooks are deduped by event ID through the idempotency engine, preventing double-credits.
+
+### 6.9 Induced Failure Recovery & Post-Mortem Log
+- 📖 *For complete technical details on induced network timeouts, webhook replays, and concurrency races, see [INCIDENTS.md](file:///d:/Movie%20Booking%20System-II/INCIDENTS.md).*
 
 ---
 

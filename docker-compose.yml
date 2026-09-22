@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:16
+    environment: {POSTGRES_DB: cinebook, POSTGRES_PASSWORD: postgres}
+    ports: ["5432:5432"]
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+  backend:
+    build: ./cinebook-backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/cinebook
+      REDIS_HOST: redis
+    depends_on: [postgres, redis]
+    ports: ["8080:8080"]
+  frontend:
+    build: ./cinebook-frontend
+    ports: ["3000:80"]
+    depends_on: [backend]
