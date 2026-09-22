@@ -62,43 +62,47 @@ public class TmdbService {
         List<Movie> importedMovies = new ArrayList<>();
         WebClient client = WebClient.create(baseUrl);
 
-        List<String> endpoints = List.of(
-            "/movie/popular?api_key=" + apiKey + "&page=1",
-            "/discover/movie?api_key=" + apiKey + "&region=IN&with_original_language=hi&sort_by=popularity.desc&page=1",
-            "/discover/movie?api_key=" + apiKey + "&region=IN&with_original_language=te&sort_by=popularity.desc&page=1",
-            "/discover/movie?api_key=" + apiKey + "&region=IN&with_original_language=ta&sort_by=popularity.desc&page=1",
-            "/discover/movie?api_key=" + apiKey + "&region=IN&with_original_language=kn&sort_by=popularity.desc&page=1",
-            "/discover/movie?api_key=" + apiKey + "&region=IN&with_original_language=ml&sort_by=popularity.desc&page=1",
-            "/discover/movie?api_key=" + apiKey + "&region=IN&sort_by=popularity.desc&page=1"
+        int pagesToFetch = Math.max(1, maxPages);
+        List<String> baseEndpoints = List.of(
+            "/movie/popular?api_key=" + apiKey,
+            "/discover/movie?api_key=" + apiKey + "&region=IN&with_original_language=hi&sort_by=popularity.desc",
+            "/discover/movie?api_key=" + apiKey + "&region=IN&with_original_language=te&sort_by=popularity.desc",
+            "/discover/movie?api_key=" + apiKey + "&region=IN&with_original_language=ta&sort_by=popularity.desc",
+            "/discover/movie?api_key=" + apiKey + "&region=IN&with_original_language=kn&sort_by=popularity.desc",
+            "/discover/movie?api_key=" + apiKey + "&region=IN&with_original_language=ml&sort_by=popularity.desc",
+            "/discover/movie?api_key=" + apiKey + "&region=IN&sort_by=popularity.desc"
         );
 
-        for (String endpoint : endpoints) {
-            try {
-                String jsonStr = client.get()
-                        .uri(endpoint)
-                        .retrieve()
-                        .bodyToMono(String.class)
-                        .block();
+        for (int page = 1; page <= pagesToFetch; page++) {
+            for (String baseEndpoint : baseEndpoints) {
+                String endpoint = baseEndpoint + "&page=" + page;
+                try {
+                    String jsonStr = client.get()
+                            .uri(endpoint)
+                            .retrieve()
+                            .bodyToMono(String.class)
+                            .block();
 
-                JSONObject json = new JSONObject(jsonStr);
-                JSONArray results = json.optJSONArray("results");
-                if (results == null) continue;
+                    JSONObject json = new JSONObject(jsonStr);
+                    JSONArray results = json.optJSONArray("results");
+                    if (results == null) continue;
 
-                for (int i = 0; i < results.length(); i++) {
-                    JSONObject m = results.getJSONObject(i);
-                    int tmdbId = m.getInt("id");
+                    for (int i = 0; i < results.length(); i++) {
+                        JSONObject m = results.getJSONObject(i);
+                        int tmdbId = m.getInt("id");
 
-                    try {
-                        Movie movie = importMovieFromTmdb(tmdbId);
-                        if (movie != null) {
-                            importedMovies.add(movie);
+                        try {
+                            Movie movie = importMovieFromTmdb(tmdbId);
+                            if (movie != null) {
+                                importedMovies.add(movie);
+                            }
+                        } catch (Exception e) {
+                            log.debug("Skipped TMDB movie ID {}: {}", tmdbId, e.getMessage());
                         }
-                    } catch (Exception e) {
-                        log.debug("Skipped TMDB movie ID {}: {}", tmdbId, e.getMessage());
                     }
+                } catch (Exception e) {
+                    log.error("Failed to fetch TMDB endpoint {}: {}", endpoint, e.getMessage());
                 }
-            } catch (Exception e) {
-                log.error("Failed to fetch TMDB endpoint {}: {}", endpoint, e.getMessage());
             }
         }
         log.info("Bulk TMDB Sync completed. Total movies imported: {}", importedMovies.size());

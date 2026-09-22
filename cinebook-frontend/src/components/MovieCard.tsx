@@ -8,12 +8,19 @@ interface MovieCardProps {
   onPlayTrailer?: (movie: Movie) => void;
 }
 
-export const MovieCard: React.FC<MovieCardProps> = ({ movie, onSelect, onPlayTrailer }) => {
+export const MovieCard: React.FC<MovieCardProps> = ({
+  movie,
+  onSelect,
+  onPlayTrailer,
+}) => {
   return (
     <div className="movie-card" onClick={() => onSelect(movie)}>
       <div className="movie-poster-wrap">
         <img
-          src={movie.posterUrl || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&q=80'}
+          src={
+            movie.posterUrl ||
+            'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&q=80'
+          }
           alt={movie.title}
           loading="lazy"
         />
@@ -42,7 +49,15 @@ export const MovieCard: React.FC<MovieCardProps> = ({ movie, onSelect, onPlayTra
                 e.stopPropagation();
                 onPlayTrailer(movie);
               }}
-              style={{ flex: 1, padding: '8px 6px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+              style={{
+                flex: 1,
+                padding: '8px 6px',
+                fontSize: '0.75rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 4,
+              }}
             >
               <Play size={13} fill="#ffffff" /> Trailer
             </button>
@@ -54,7 +69,15 @@ export const MovieCard: React.FC<MovieCardProps> = ({ movie, onSelect, onPlayTra
               e.stopPropagation();
               onSelect(movie);
             }}
-            style={{ flex: 1.4, padding: '8px 8px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+            style={{
+              flex: 1.4,
+              padding: '8px 8px',
+              fontSize: '0.75rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 4,
+            }}
           >
             <Ticket size={13} /> Book
           </button>

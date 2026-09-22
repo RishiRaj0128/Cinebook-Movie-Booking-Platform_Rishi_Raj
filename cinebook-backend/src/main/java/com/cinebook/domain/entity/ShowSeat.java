@@ -19,7 +19,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "show_seats",
        uniqueConstraints = @UniqueConstraint(columnNames = {"show_id", "seat_id"}))
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder @ToString
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class ShowSeat {
 
@@ -27,10 +27,12 @@ public class ShowSeat {
     private UUID id;
 
     @JsonIgnore
+    @ToString.Exclude
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "show_id", nullable = false)
     private Show show;
 
+    @ToString.Exclude
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "seat_id", nullable = false)
     private Seat seat;

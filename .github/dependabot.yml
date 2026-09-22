@@ -6,6 +6,8 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
+    cooldown:
+      default-days: 7
 
   # React / Node npm dependencies
   - package-ecosystem: "npm"
@@ -13,6 +15,8 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
+    cooldown:
+      default-days: 7
 
   # GitHub Actions workflow dependencies
   - package-ecosystem: "github-actions"
@@ -20,3 +24,6 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
+    cooldown:
+      default-days: 7
+

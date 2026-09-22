@@ -266,12 +266,14 @@ CineBook's payment and transaction core is designed from the ground up to behave
   $$\text{validateRequest}(req) \xrightarrow{\text{flatMap}} \text{checkSeatHold}(req) \xrightarrow{\text{flatMap}} \text{authorizePayment}(req) \xrightarrow{\text{flatMap}} \text{postLedger}(req)$$
 - 📖 *For a deep dive on applied FP principles and honest Java limitations (no ADTs, no monadic error accumulation like Haskell's Validation), read [PAYMENT_FP_NOTES.md](file:///d:/Movie%20Booking%20System-II/PAYMENT_FP_NOTES.md).*
 
-### 6.2 Cryptographic Idempotency
+### 6.2 Cryptographic Idempotency & Distributed Claim State Machine
+- **Atomic Insert-Claim Pattern**: Solves multi-instance concurrent race conditions by attempting to insert an `IdempotencyRecord` with `status = 'PROCESSING'` inside an isolated `REQUIRES_NEW` transaction **before** executing any business logic.
+- **Cluster Race Resolution**:
+  - The winner instance commits the `PROCESSING` claim, executes the payment, marks the record `COMPLETED`, and caches the verbatim response.
+  - Competing instances catch the database `UNIQUE(idempotency_key)` constraint, await completion of the in-flight transaction, and return the winner's cached result verbatim without executing duplicate payments.
 - **Client-Generated Keys**: Every payment-initiating request supports an `Idempotency-Key` header.
 - **Payload Hash Matching**: The engine calculates a SHA-256 hash of the request payload.
-- **Verbatim Cached Replay**: Identical requests return the stored response verbatim with zero redundant charges or database mutations.
 - **Conflict Detection (HTTP 409)**: If an existing key arrives with a different request payload, the request is rejected with `IdempotencyConflictException` to catch client bugs.
-- **Atomic Persistence**: Handled atomically with database transactions.
 
 ### 6.3 Concurrency Control & Deadlock-Free Ordering
 - **Pessimistic Row Locking**: Both seat holds and user wallet debits use explicit PostgreSQL row-level locks (`SELECT ... FOR UPDATE` via `LockModeType.PESSIMISTIC_WRITE`).
@@ -282,6 +284,9 @@ CineBook's payment and transaction core is designed from the ground up to behave
 
 ### 6.4 Double-Entry Append-Only Ledger
 - **No In-Place Balance Drift**: Replaces procedural balance mutations (`UPDATE accounts SET balance = balance - 100`) with an append-only `ledger_entries` table. Rows are **NEVER updated or deleted**.
+- **Database & Entity-Level Invariant Enforcement**:
+  - **PostgreSQL Trigger**: `trg_ledger_no_update_or_delete` executes `prevent_ledger_modification()` raising a database exception if an `UPDATE` or `DELETE` is attempted on `ledger_entries`.
+  - **JPA Lifecycle Callbacks**: `@PreUpdate` and `@PreRemove` on `LedgerEntry` throw `UnsupportedOperationException` to enforce immutability at the application layer.
 - **Balanced Transfers**: Every transaction writes exactly two entries (one `DEBIT` and one `CREDIT`) in the same DB transaction:
   $$\sum \text{CREDIT} = \sum \text{DEBIT}$$
 - **Zero-Sum Reconciliation Audit**: Automated reconciliation endpoint (`/api/payments/reconciliation/ledger`) executes:
@@ -291,18 +296,20 @@ CineBook's payment and transaction core is designed from the ground up to behave
 - **Explicit Lifecycle**: Transactions progress through a formal state machine:
   $$\text{CREATED} \rightarrow \text{PROCESSING} \rightarrow \text{AUTHORIZED} \rightarrow \text{CAPTURED} \rightarrow \text{SETTLED}$$
   $$\text{Side branches: } \text{FAILED}, \text{REFUNDED}, \text{PARTIALLY\_REFUNDED}$$
-- **Centralized Enforcement**: `TransactionStateMachine` rejects any illegal transition (e.g. `SETTLED` $\rightarrow$ `PROCESSING`) with `InvalidStateTransitionException`.
+- **Deterministic Terminal States**: Only `FAILED` and `REFUNDED` are terminal (`isTerminal() == true`). `SETTLED` is transitionable to `PARTIALLY_REFUNDED` and `REFUNDED` for customer chargebacks and refunds.
+- **Centralized Enforcement**: `TransactionStateMachine` rejects any illegal transition (e.g. `REFUNDED` $\rightarrow$ `PROCESSING`) with `InvalidStateTransitionException`.
 - **Immutable Audit Trail**: Every state transition is written to `transaction_state_transitions` with timestamp, trigger event, and metadata.
 
 ### 6.6 Smallest Integer Currency Discipline (Paise)
 - All monetary math is strictly stored and calculated as integers in the smallest currency unit (**paise**), eliminating IEEE 754 floating-point rounding errors ($0.1 + 0.2 \neq 0.3$).
 - Decimal rupees are converted strictly at API boundaries using the `Money` value object.
 
-### 6.7 Saga Pattern & Distributed Compensation
-- Multi-step booking flows are modeled as an ordered pipeline of `(action, compensation)` pairs:
-  1. `ReserveSeatStep` $\leftrightarrow$ `ReleaseSeatCompensation`
-  2. `DebitWalletStep` $\leftrightarrow$ `RefundWalletCompensation`
-  3. `PostLedgerStep` $\leftrightarrow$ `ReverseLedgerCompensation`
+### 6.7 Saga Pattern & Distributed Compensation (4-Step End-to-End Orchestration)
+- Multi-step booking flows execute real database operations and compensations across all 4 steps:
+  1. `HoldSeatStep` $\leftrightarrow$ `ReleaseSeatCompensation`: Acquires row locks and marks `ShowSeat` as `LOCKED` with expiration $\leftrightarrow$ Releases locks back to `AVAILABLE`.
+  2. `AuthorizePaymentStep` $\leftrightarrow$ `VoidPaymentCompensation`: Debits user wallet and posts balanced ledger entry (`USER_WALLET` $\rightarrow$ `MERCHANT_ESCROW`) $\leftrightarrow$ Credits wallet and reverses transfer.
+  3. `PostLedgerStep` $\leftrightarrow$ `ReverseLedgerCompensation`: Posts double-entry transfer from `MERCHANT_ESCROW` to Cinema Revenue $\leftrightarrow$ Posts compensating reverse transfer.
+  4. `ConfirmBookingStep` $\leftrightarrow$ `CancelBookingCompensation`: Updates `Booking` entity to `CONFIRMED` $\leftrightarrow$ Marks booking `CANCELLED`.
 - If any downstream step fails, completed steps are rolled back in reverse order.
 - *Compensation Failures*: Any failure during compensation itself is marked as `COMPENSATION_FAILED`, logged with CRITICAL severity, and queued for the background reconciliation sweep.
 

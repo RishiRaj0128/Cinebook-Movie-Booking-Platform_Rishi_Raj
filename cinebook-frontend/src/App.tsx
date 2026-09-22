@@ -24,12 +24,17 @@ export function App() {
   const [featuredMovie, setFeaturedMovie] = useState<Movie | null>(null);
   const [showtimeMovie, setShowtimeMovie] = useState<Movie | null>(null);
   const [selectedShow, setSelectedShow] = useState<Show | null>(null);
-  const [confirmedBooking, setConfirmedBooking] = useState<Booking | null>(null);
+  const [confirmedBooking, setConfirmedBooking] = useState<Booking | null>(
+    null
+  );
   const [trailerMovie, setTrailerMovie] = useState<Movie | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const displayedMovies = movies.filter(m => {
-    const matchesLang = !selectedLanguage || (m.language && m.language.toLowerCase() === selectedLanguage.toLowerCase());
+  const displayedMovies = movies.filter((m) => {
+    const matchesLang =
+      !selectedLanguage ||
+      (m.language &&
+        m.language.toLowerCase() === selectedLanguage.toLowerCase());
     return matchesLang;
   });
 
@@ -97,7 +102,9 @@ export function App() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div
+      style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}
+    >
       <Navbar
         selectedCity={selectedCity}
         cities={cities}
@@ -108,12 +115,33 @@ export function App() {
       />
 
       {showSuccessBanner && (
-        <div style={{ background: '#10b981', color: 'white', padding: '12px 24px', textAlign: 'center', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-          <CheckCircle size={20} /> Booking Confirmed! Ticket QR code & receipt sent to your email.
+        <div
+          style={{
+            background: '#10b981',
+            color: 'white',
+            padding: '12px 24px',
+            textAlign: 'center',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+          }}
+        >
+          <CheckCircle size={20} /> Booking Confirmed! Ticket QR code & receipt
+          sent to your email.
         </div>
       )}
 
-      <main style={{ flexGrow: 1, padding: '2rem', maxWidth: 1280, margin: '0 auto', width: '100%' }}>
+      <main
+        style={{
+          flexGrow: 1,
+          padding: '2rem',
+          maxWidth: 1280,
+          margin: '0 auto',
+          width: '100%',
+        }}
+      >
         {/* Featured Hero Banner */}
         {featuredMovie && (
           <div
@@ -124,13 +152,39 @@ export function App() {
           >
             <div className="hero-overlay" />
             <div className="hero-content">
-              <div style={{ textTransform: 'uppercase', letterSpacing: 2, fontSize: '0.8rem', color: '#e50914', fontWeight: 800, marginBottom: 8 }}>
+              <div
+                style={{
+                  textTransform: 'uppercase',
+                  letterSpacing: 2,
+                  fontSize: '0.8rem',
+                  color: '#e50914',
+                  fontWeight: 800,
+                  marginBottom: 8,
+                }}
+              >
                 Featured Movie
               </div>
-              <h1 style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '0.5rem', lineHeight: 1.1 }}>
+              <h1
+                style={{
+                  fontSize: '2.5rem',
+                  fontWeight: 900,
+                  marginBottom: '0.5rem',
+                  lineHeight: 1.1,
+                }}
+              >
                 {featuredMovie.title}
               </h1>
-              <p style={{ color: '#d1d5db', fontSize: '0.95rem', marginBottom: '1.5rem', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+              <p
+                style={{
+                  color: '#d1d5db',
+                  fontSize: '0.95rem',
+                  marginBottom: '1.5rem',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                }}
+              >
                 {featuredMovie.description}
               </p>
 
@@ -142,7 +196,10 @@ export function App() {
                 >
                   <Play size={16} fill="#ffffff" /> Watch Trailer
                 </button>
-                <button className="btn btn-primary" onClick={() => handleSelectMovie(featuredMovie)}>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => handleSelectMovie(featuredMovie)}
+                >
                   <Film size={16} /> Book Tickets
                 </button>
               </div>
@@ -154,17 +211,56 @@ export function App() {
         <AiSearchBox />
 
         {/* Header & Filters */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1rem',
+            marginBottom: '1.5rem',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <h2
+              style={{
+                fontSize: '1.5rem',
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
               Now Showing ({displayedMovies.length})
               {selectedGenre && (
-                <span style={{ fontSize: '0.85rem', background: 'rgba(229,9,20,0.2)', color: '#e50914', padding: '2px 10px', borderRadius: 12, fontWeight: 700 }}>
+                <span
+                  style={{
+                    fontSize: '0.85rem',
+                    background: 'rgba(229,9,20,0.2)',
+                    color: '#e50914',
+                    padding: '2px 10px',
+                    borderRadius: 12,
+                    fontWeight: 700,
+                  }}
+                >
                   {selectedGenre}
                 </span>
               )}
               {selectedLanguage && (
-                <span style={{ fontSize: '0.85rem', background: 'rgba(16,185,129,0.2)', color: '#10b981', padding: '2px 10px', borderRadius: 12, fontWeight: 700 }}>
+                <span
+                  style={{
+                    fontSize: '0.85rem',
+                    background: 'rgba(16,185,129,0.2)',
+                    color: '#10b981',
+                    padding: '2px 10px',
+                    borderRadius: 12,
+                    fontWeight: 700,
+                  }}
+                >
                   {selectedLanguage}
                 </span>
               )}
@@ -180,20 +276,29 @@ export function App() {
               >
                 <option value="">All Genres</option>
                 {genres.map((g) => (
-                  <option key={g} value={g}>{g}</option>
+                  <option key={g} value={g}>
+                    {g}
+                  </option>
                 ))}
               </select>
             </div>
           </div>
 
           {/* Language & Cinema Industry Filter Pills (Kannada & Malayalam Removed per request) */}
-          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+          <div
+            style={{
+              display: 'flex',
+              gap: 8,
+              overflowX: 'auto',
+              paddingBottom: 4,
+            }}
+          >
             {[
               { label: '🌏 All Languages', value: '' },
               { label: '🇮🇳 Hindi (Bollywood)', value: 'Hindi' },
               { label: '🇮🇳 Telugu (Tollywood)', value: 'Telugu' },
               { label: '🇮🇳 Tamil (Kollywood)', value: 'Tamil' },
-              { label: '🇺🇸 English (Hollywood)', value: 'English' }
+              { label: '🇺🇸 English (Hollywood)', value: 'English' },
             ].map((lang) => {
               const isActive = selectedLanguage === lang.value;
               return (
@@ -206,11 +311,15 @@ export function App() {
                     fontSize: '0.85rem',
                     fontWeight: 700,
                     cursor: 'pointer',
-                    border: isActive ? '1.5px solid #10b981' : '1px solid rgba(255,255,255,0.1)',
-                    background: isActive ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.03)',
+                    border: isActive
+                      ? '1.5px solid #10b981'
+                      : '1px solid rgba(255,255,255,0.1)',
+                    background: isActive
+                      ? 'rgba(16, 185, 129, 0.2)'
+                      : 'rgba(255,255,255,0.03)',
                     color: isActive ? '#10b981' : '#d1d5db',
                     transition: 'all 0.2s ease',
-                    whiteSpace: 'nowrap'
+                    whiteSpace: 'nowrap',
                   }}
                 >
                   {lang.label}
@@ -220,7 +329,14 @@ export function App() {
           </div>
 
           {/* Interactive Genre Filter Pills Bar */}
-          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 6 }}>
+          <div
+            style={{
+              display: 'flex',
+              gap: 8,
+              overflowX: 'auto',
+              paddingBottom: 6,
+            }}
+          >
             <button
               onClick={() => setSelectedGenre('')}
               style={{
@@ -229,11 +345,15 @@ export function App() {
                 fontSize: '0.85rem',
                 fontWeight: 700,
                 cursor: 'pointer',
-                border: selectedGenre === '' ? '1.5px solid #e50914' : '1px solid rgba(255,255,255,0.1)',
-                background: selectedGenre === '' ? '#e50914' : 'rgba(255,255,255,0.04)',
+                border:
+                  selectedGenre === ''
+                    ? '1.5px solid #e50914'
+                    : '1px solid rgba(255,255,255,0.1)',
+                background:
+                  selectedGenre === '' ? '#e50914' : 'rgba(255,255,255,0.04)',
                 color: '#ffffff',
                 transition: 'all 0.2s ease',
-                whiteSpace: 'nowrap'
+                whiteSpace: 'nowrap',
               }}
             >
               🎬 All Genres
@@ -251,11 +371,15 @@ export function App() {
                     fontSize: '0.85rem',
                     fontWeight: 700,
                     cursor: 'pointer',
-                    border: isActive ? '1.5px solid #e50914' : '1px solid rgba(255,255,255,0.1)',
-                    background: isActive ? 'rgba(229, 9, 20, 0.25)' : 'rgba(255,255,255,0.03)',
+                    border: isActive
+                      ? '1.5px solid #e50914'
+                      : '1px solid rgba(255,255,255,0.1)',
+                    background: isActive
+                      ? 'rgba(229, 9, 20, 0.25)'
+                      : 'rgba(255,255,255,0.03)',
                     color: isActive ? '#e50914' : '#d1d5db',
                     transition: 'all 0.2s ease',
-                    whiteSpace: 'nowrap'
+                    whiteSpace: 'nowrap',
                   }}
                 >
                   {g}
@@ -267,9 +391,18 @@ export function App() {
 
         {/* Movies List */}
         {loading ? (
-          <div style={{ padding: '4rem', textAlign: 'center', color: '#9ca3af' }}>Loading movies catalog...</div>
+          <div
+            style={{ padding: '4rem', textAlign: 'center', color: '#9ca3af' }}
+          >
+            Loading movies catalog...
+          </div>
         ) : displayedMovies.length === 0 ? (
-          <div style={{ padding: '4rem', textAlign: 'center', color: '#9ca3af' }}>No movies found for selected filters. Try selecting "All Languages" or "All Genres"!</div>
+          <div
+            style={{ padding: '4rem', textAlign: 'center', color: '#9ca3af' }}
+          >
+            No movies found for selected filters. Try selecting "All Languages"
+            or "All Genres"!
+          </div>
         ) : (
           <div className="movie-grid">
             {displayedMovies.map((movie) => (
@@ -286,8 +419,15 @@ export function App() {
 
       {/* Modals */}
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
-      {showBookingsModal && <MyBookingsModal onClose={() => setShowBookingsModal(false)} />}
-      {showAdminModal && <AdminDashboardModal onClose={() => setShowAdminModal(false)} onRefreshMovies={fetchMovies} />}
+      {showBookingsModal && (
+        <MyBookingsModal onClose={() => setShowBookingsModal(false)} />
+      )}
+      {showAdminModal && (
+        <AdminDashboardModal
+          onClose={() => setShowAdminModal(false)}
+          onRefreshMovies={fetchMovies}
+        />
+      )}
 
       {/* In-Site Video Trailer Modal */}
       {trailerMovie && (

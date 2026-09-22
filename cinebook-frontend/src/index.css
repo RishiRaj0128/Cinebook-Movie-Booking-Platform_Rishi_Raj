@@ -29,7 +29,12 @@ body {
   line-height: 1.5;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: var(--font-heading);
   letter-spacing: -0.02em;
 }
@@ -126,7 +131,12 @@ h1, h2, h3, h4, h5, h6 {
 .hero-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(0deg, var(--bg-dark) 0%, rgba(10, 11, 14, 0.4) 60%, rgba(0, 0, 0, 0.2) 100%);
+  background: linear-gradient(
+    0deg,
+    var(--bg-dark) 0%,
+    rgba(10, 11, 14, 0.4) 60%,
+    rgba(0, 0, 0, 0.2) 100%
+  );
 }
 
 .hero-content {
@@ -220,7 +230,11 @@ h1, h2, h3, h4, h5, h6 {
   width: 80%;
   margin: 0 auto 2.5rem;
   height: 12px;
-  background: linear-gradient(180deg, rgba(229, 9, 20, 0.8), rgba(229, 9, 20, 0));
+  background: linear-gradient(
+    180deg,
+    rgba(229, 9, 20, 0.8),
+    rgba(229, 9, 20, 0)
+  );
   border-radius: 50% 50% 0 0 / 100% 100% 0 0;
   box-shadow: 0 10px 30px rgba(229, 9, 20, 0.5);
   text-align: center;
@@ -331,8 +345,14 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 @keyframes modalIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* Form inputs */
@@ -366,7 +386,11 @@ h1, h2, h3, h4, h5, h6 {
 
 /* AI Recommendation Chat Box */
 .ai-box {
-  background: linear-gradient(135deg, rgba(229, 9, 20, 0.1), rgba(59, 130, 246, 0.1));
+  background: linear-gradient(
+    135deg,
+    rgba(229, 9, 20, 0.1),
+    rgba(59, 130, 246, 0.1)
+  );
   border: 1px solid rgba(229, 9, 20, 0.3);
   border-radius: 16px;
   padding: 1.5rem;

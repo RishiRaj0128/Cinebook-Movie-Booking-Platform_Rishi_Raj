@@ -15,7 +15,11 @@ public enum TransactionState {
     REFUNDED,
     PARTIALLY_REFUNDED;
 
+    /**
+     * Truly terminal states from which zero outgoing transitions exist.
+     * Note: SETTLED and PARTIALLY_REFUNDED are non-terminal because they can transition to refund states.
+     */
     public boolean isTerminal() {
-        return this == SETTLED || this == FAILED || this == REFUNDED;
+        return this == FAILED || this == REFUNDED;
     }
 }

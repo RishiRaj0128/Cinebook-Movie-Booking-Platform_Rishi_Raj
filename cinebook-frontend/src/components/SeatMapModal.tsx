@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { X, CreditCard, AlertCircle, User as UserIcon, LogIn, Lock } from 'lucide-react';
+import {
+  X,
+  CreditCard,
+  AlertCircle,
+  User as UserIcon,
+  LogIn,
+} from 'lucide-react';
 import { Show, ShowSeat, Booking } from '../types';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -12,7 +18,12 @@ interface SeatMapModalProps {
   onOpenAuth: () => void;
 }
 
-export const SeatMapModal: React.FC<SeatMapModalProps> = ({ show, onClose, onSuccess, onOpenAuth }) => {
+export const SeatMapModal: React.FC<SeatMapModalProps> = ({
+  show,
+  onClose,
+  onSuccess,
+  onOpenAuth,
+}) => {
   const { user } = useAuth();
   const [seats, setSeats] = useState<ShowSeat[]>([]);
   const [selectedSeatIds, setSelectedSeatIds] = useState<string[]>([]);
@@ -35,12 +46,16 @@ export const SeatMapModal: React.FC<SeatMapModalProps> = ({ show, onClose, onSuc
     ];
     const generated: ShowSeat[] = [];
     const base = currentShow.basePrice || 25000;
-    const hash = Math.abs((currentShow.id || '').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0));
+    const hash = Math.abs(
+      (currentShow.id || '')
+        .split('')
+        .reduce((acc, c) => acc + c.charCodeAt(0), 0)
+    );
 
     rows.forEach((r, rIdx) => {
       for (let c = 1; c <= 8; c++) {
         // Deterministically mark a couple seats as booked for realism
-        const isBooked = ((hash + rIdx * 8 + c) % 7 === 0);
+        const isBooked = (hash + rIdx * 8 + c) % 7 === 0;
         const status = isBooked ? 'BOOKED' : 'AVAILABLE';
         const seatPrice = Math.round(base * r.priceMult);
         generated.push({
@@ -130,7 +145,10 @@ export const SeatMapModal: React.FC<SeatMapModalProps> = ({ show, onClose, onSuc
           await api.holdSeats(show.id, selectedSeatIds);
           booking = await api.createBooking(show.id, selectedSeatIds);
         } catch (e) {
-          console.warn('Backend booking initialization falling back to client checkout session:', e);
+          console.warn(
+            'Backend booking initialization falling back to client checkout session:',
+            e
+          );
         }
       }
 
@@ -156,7 +174,9 @@ export const SeatMapModal: React.FC<SeatMapModalProps> = ({ show, onClose, onSuc
       // Open Payment Gateway Modal
       setPendingBooking(bookingForPayment);
     } catch (err: any) {
-      setError(err.message || 'Failed to initialize checkout. Please try again.');
+      setError(
+        err.message || 'Failed to initialize checkout. Please try again.'
+      );
     } finally {
       setHolding(false);
     }
@@ -173,21 +193,72 @@ export const SeatMapModal: React.FC<SeatMapModalProps> = ({ show, onClose, onSuc
   return (
     <>
       <div className="modal-overlay" onClick={onClose}>
-        <div className="modal-content" style={{ maxWidth: 740, padding: '2rem' }} onClick={(e) => e.stopPropagation()}>
+        <div
+          className="modal-content"
+          style={{ maxWidth: 740, padding: '2rem' }}
+          onClick={(e) => e.stopPropagation()}
+        >
           <button
             onClick={onClose}
-            style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer' }}
+            style={{
+              position: 'absolute',
+              top: 16,
+              right: 16,
+              background: 'none',
+              border: 'none',
+              color: '#9ca3af',
+              cursor: 'pointer',
+            }}
           >
             <X size={20} />
           </button>
 
-          <h2 style={{ fontSize: '1.35rem', fontWeight: 800, marginBottom: '0.25rem' }}>{show.movie.title}</h2>
-          <p style={{ color: '#9ca3af', fontSize: '0.875rem', marginBottom: '1.25rem' }}>
-            {show.screen?.theater?.name || 'Multiplex Cinema'} • {show.screen?.name || 'Screen 1'} • {new Date(show.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ({new Date(show.startTime).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })})
+          <h2
+            style={{
+              fontSize: '1.35rem',
+              fontWeight: 800,
+              marginBottom: '0.25rem',
+            }}
+          >
+            {show.movie.title}
+          </h2>
+          <p
+            style={{
+              color: '#9ca3af',
+              fontSize: '0.875rem',
+              marginBottom: '1.25rem',
+            }}
+          >
+            {show.screen?.theater?.name || 'Multiplex Cinema'} •{' '}
+            {show.screen?.name || 'Screen 1'} •{' '}
+            {new Date(show.startTime).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+            })}{' '}
+            (
+            {new Date(show.startTime).toLocaleDateString([], {
+              weekday: 'short',
+              day: 'numeric',
+              month: 'short',
+            })}
+            )
           </p>
 
           {error && (
-            <div style={{ background: 'rgba(229,9,20,0.15)', border: '1px solid #e50914', color: '#f87171', padding: '10px 14px', borderRadius: 8, fontSize: '0.85rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div
+              style={{
+                background: 'rgba(229,9,20,0.15)',
+                border: '1px solid #e50914',
+                color: '#f87171',
+                padding: '10px 14px',
+                borderRadius: 8,
+                fontSize: '0.85rem',
+                marginBottom: '1rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
               <AlertCircle size={16} /> {error}
             </div>
           )}
@@ -199,58 +270,117 @@ export const SeatMapModal: React.FC<SeatMapModalProps> = ({ show, onClose, onSuc
 
           {/* Seat Grid */}
           {loading ? (
-            <div style={{ padding: '3rem', textAlign: 'center', color: '#9ca3af' }}>Loading interactive seat map...</div>
+            <div
+              style={{ padding: '3rem', textAlign: 'center', color: '#9ca3af' }}
+            >
+              Loading interactive seat map...
+            </div>
           ) : (
             <div className="seat-grid" style={{ marginBottom: '1.25rem' }}>
-              {Object.keys(rowsMap).sort().map((rowLabel) => (
-                <div key={rowLabel} className="seat-row">
-                  <div className="row-label">{rowLabel}</div>
-                  {rowsMap[rowLabel].map((seat) => {
-                    const isSelected = selectedSeatIds.includes(seat.id);
-                    let className = 'seat ';
-                    if (seat.status === 'BOOKED') className += 'seat-booked';
-                    else if (seat.status === 'LOCKED') className += 'seat-locked';
-                    else if (isSelected) className += 'seat-selected';
-                    else className += 'seat-available';
+              {Object.keys(rowsMap)
+                .sort()
+                .map((rowLabel) => (
+                  <div key={rowLabel} className="seat-row">
+                    <div className="row-label">{rowLabel}</div>
+                    {rowsMap[rowLabel].map((seat) => {
+                      const isSelected = selectedSeatIds.includes(seat.id);
+                      let className = 'seat ';
+                      if (seat.status === 'BOOKED') className += 'seat-booked';
+                      else if (seat.status === 'LOCKED')
+                        className += 'seat-locked';
+                      else if (isSelected) className += 'seat-selected';
+                      else className += 'seat-available';
 
-                    return (
-                      <div
-                        key={seat.id}
-                        className={className}
-                        onClick={() => toggleSeatSelection(seat)}
-                        title={`${seat.seat.rowLabel}${seat.seat.seatNumber} — ₹${(seat.price / 100).toFixed(0)} (${seat.seat.seatType})`}
-                      >
-                        {seat.seat.seatNumber}
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
+                      return (
+                        <div
+                          key={seat.id}
+                          className={className}
+                          onClick={() => toggleSeatSelection(seat)}
+                          title={`${seat.seat.rowLabel}${seat.seat.seatNumber} — ₹${(seat.price / 100).toFixed(0)} (${seat.seat.seatType})`}
+                        >
+                          {seat.seat.seatNumber}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
             </div>
           )}
 
           {/* Seat Legend */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '1.5rem', fontSize: '0.8rem', color: '#9ca3af', marginBottom: '1.25rem' }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              gap: '1.5rem',
+              fontSize: '0.8rem',
+              color: '#9ca3af',
+              marginBottom: '1.25rem',
+            }}
+          >
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div className="seat seat-available" style={{ width: 18, height: 18 }}></div> Available
+              <div
+                className="seat seat-available"
+                style={{ width: 18, height: 18 }}
+              ></div>{' '}
+              Available
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div className="seat seat-selected" style={{ width: 18, height: 18 }}></div> Selected
+              <div
+                className="seat seat-selected"
+                style={{ width: 18, height: 18 }}
+              ></div>{' '}
+              Selected
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div className="seat seat-booked" style={{ width: 18, height: 18 }}></div> Booked
+              <div
+                className="seat seat-booked"
+                style={{ width: 18, height: 18 }}
+              ></div>{' '}
+              Booked
             </div>
           </div>
 
           {/* Guest / Delivery Contact Form when not signed in */}
           {!user && showGuestForm && (
-            <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(229,9,20,0.3)', borderRadius: 12, padding: '1rem', marginBottom: '1.25rem' }}>
-              <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#f3f4f6', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><UserIcon size={16} color="#e50914" /> Ticket & Receipt Delivery Contact</span>
+            <div
+              style={{
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(229,9,20,0.3)',
+                borderRadius: 12,
+                padding: '1rem',
+                marginBottom: '1.25rem',
+              }}
+            >
+              <div
+                style={{
+                  fontSize: '0.9rem',
+                  fontWeight: 700,
+                  color: '#f3f4f6',
+                  marginBottom: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <UserIcon size={16} color="#e50914" /> Ticket & Receipt
+                  Delivery Contact
+                </span>
                 <button
                   type="button"
                   onClick={onOpenAuth}
-                  style={{ background: 'none', border: 'none', color: '#e50914', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#e50914',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
                 >
                   <LogIn size={13} /> Or Sign In
                 </button>
@@ -278,14 +408,39 @@ export const SeatMapModal: React.FC<SeatMapModalProps> = ({ show, onClose, onSuc
           )}
 
           {/* Summary Footer */}
-          <div className="glass-panel" style={{ padding: '1rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div
+            className="glass-panel"
+            style={{
+              padding: '1rem 1.25rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
             <div>
               <div style={{ fontSize: '0.85rem', color: '#9ca3af' }}>
-                {selectedSeatIds.length} seat(s) selected {selectedSeats.length > 0 && `(${selectedSeats.map(s => s.seat.rowLabel + s.seat.seatNumber).join(', ')})`}
+                {selectedSeatIds.length} seat(s) selected{' '}
+                {selectedSeats.length > 0 &&
+                  `(${selectedSeats.map((s) => s.seat.rowLabel + s.seat.seatNumber).join(', ')})`}
               </div>
-              <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#f3f4f6' }}>
+              <div
+                style={{
+                  fontSize: '1.35rem',
+                  fontWeight: 900,
+                  color: '#f3f4f6',
+                }}
+              >
                 ₹{(totalAmountPaise / 100).toFixed(2)}
-                <span style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: 400, marginLeft: 6 }}>inc. taxes</span>
+                <span
+                  style={{
+                    fontSize: '0.75rem',
+                    color: '#9ca3af',
+                    fontWeight: 400,
+                    marginLeft: 6,
+                  }}
+                >
+                  inc. taxes
+                </span>
               </div>
             </div>
 
@@ -293,10 +448,19 @@ export const SeatMapModal: React.FC<SeatMapModalProps> = ({ show, onClose, onSuc
               className="btn btn-primary"
               disabled={selectedSeatIds.length === 0 || holding}
               onClick={handleProceedToPayment}
-              style={{ padding: '10px 24px', fontSize: '0.95rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}
+              style={{
+                padding: '10px 24px',
+                fontSize: '0.95rem',
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}
             >
               <CreditCard size={18} />
-              {holding ? 'Securing Seats...' : `Proceed to Pay (₹${(totalAmountPaise / 100).toFixed(0)})`}
+              {holding
+                ? 'Securing Seats...'
+                : `Proceed to Pay (₹${(totalAmountPaise / 100).toFixed(0)})`}
             </button>
           </div>
         </div>

@@ -10,12 +10,13 @@ import java.util.UUID;
 /** Refresh tokens for JWT rotation. Stored in DB for revocation support. */
 @Entity
 @Table(name = "refresh_tokens")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder @ToString
 public class RefreshToken {
 
     @Id @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @ToString.Exclude
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;

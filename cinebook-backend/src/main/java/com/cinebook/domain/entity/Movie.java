@@ -16,7 +16,7 @@ import java.util.UUID;
  */
 @Entity
 @Table(name = "movies")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder @ToString
 public class Movie {
 
     @Id

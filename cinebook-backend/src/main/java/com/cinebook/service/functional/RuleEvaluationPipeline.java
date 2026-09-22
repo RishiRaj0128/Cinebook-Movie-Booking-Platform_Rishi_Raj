@@ -2,8 +2,6 @@ package com.cinebook.service.functional;
 
 import com.cinebook.domain.model.payment.PaymentRequestRecord;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -44,9 +42,10 @@ public final class RuleEvaluationPipeline {
         );
     }
 
-    public static RuleEvaluationPipeline defaultRules() {
+    public static RuleEvaluationPipeline productionPipeline() {
         return of(
                 PaymentValidationRules.POSITIVE_AMOUNT_RULE,
+                PaymentValidationRules.ACTIVE_BOOKING_RULE,
                 PaymentValidationRules.USER_ELIGIBILITY_RULE,
                 PaymentValidationRules.ANTI_FRAUD_VELOCITY_RULE,
                 PaymentValidationRules.SINGLE_TRANSACTION_LIMIT_RULE,
@@ -54,6 +53,10 @@ public final class RuleEvaluationPipeline {
                 PaymentValidationRules.PAYMENT_METHOD_RULE,
                 PaymentValidationRules.IDEMPOTENCY_KEY_RULE
         );
+    }
+
+    public static RuleEvaluationPipeline defaultRules() {
+        return productionPipeline();
     }
 
     /**

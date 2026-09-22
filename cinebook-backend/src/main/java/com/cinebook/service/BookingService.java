@@ -95,7 +95,6 @@ public class BookingService {
         }
 
         List<BookingSeat> bookingSeats = booking.getBookingSeats();
-        LocalDateTime now = LocalDateTime.now();
 
         for (BookingSeat bs : bookingSeats) {
             ShowSeat ss = bs.getShowSeat();

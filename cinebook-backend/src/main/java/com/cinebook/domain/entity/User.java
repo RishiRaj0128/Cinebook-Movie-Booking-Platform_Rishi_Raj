@@ -18,7 +18,7 @@ import java.util.*;
  */
 @Entity
 @Table(name = "users")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder @ToString
 public class User implements UserDetails {
 
     @Id
@@ -29,6 +29,7 @@ public class User implements UserDetails {
     private String email;
 
     @Column(nullable = false)
+    @ToString.Exclude
     private String password;
 
     private String fullName;
@@ -55,6 +56,12 @@ public class User implements UserDetails {
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
     }
+
+    @Override
+    public String getPassword() { return password; }
+
+    @Override
+    public boolean isEnabled() { return enabled; }
 
     @Override
     public String getUsername() { return email; }

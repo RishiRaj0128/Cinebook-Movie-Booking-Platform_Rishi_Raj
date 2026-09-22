@@ -45,6 +45,19 @@ CREATE INDEX idx_ledger_transaction_id ON ledger_entries(transaction_id);
 CREATE INDEX idx_ledger_account_id     ON ledger_entries(account_id);
 CREATE INDEX idx_ledger_direction      ON ledger_entries(direction);
 
+-- Append-Only Immutability Trigger: Prohibits UPDATE and DELETE operations on ledger
+CREATE OR REPLACE FUNCTION prevent_ledger_modification()
+RETURNS TRIGGER AS $$
+BEGIN
+  RAISE EXCEPTION 'Ledger entries are strictly immutable and append-only. UPDATE and DELETE operations are prohibited.';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_ledger_no_update_or_delete ON ledger_entries;
+CREATE TRIGGER trg_ledger_no_update_or_delete
+BEFORE UPDATE OR DELETE ON ledger_entries
+FOR EACH ROW EXECUTE FUNCTION prevent_ledger_modification();
+
 -- 4. PAYMENT TRANSACTIONS (Finite State Machine Enforced)
 CREATE TABLE IF NOT EXISTS payment_transactions (
   id                  UUID PRIMARY KEY,
