@@ -20,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -38,9 +39,14 @@ public class PaymentController {
             @RequestParam UUID bookingId,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @AuthenticationPrincipal User user) {
+        Map<String, String> payload = Map.of(
+                "action", "create-order",
+                "bookingId", bookingId.toString(),
+                "userId", user.getId().toString()
+        );
         PaymentOrderResponse response = idempotencyService.execute(
                 idempotencyKey,
-                "create-order:" + bookingId + ":" + user.getId(),
+                payload,
                 PaymentOrderResponse.class,
                 () -> paymentService.createOrder(bookingId, user.getId())
         );

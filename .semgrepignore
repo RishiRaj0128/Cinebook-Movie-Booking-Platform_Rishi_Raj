@@ -1,0 +1,2 @@
+# Exclude CI/CD workflow definitions from application code SAST
+.github/

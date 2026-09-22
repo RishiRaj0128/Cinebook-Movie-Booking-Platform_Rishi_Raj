@@ -93,6 +93,7 @@ jobs:
             --config p/default \
             --config p/owasp-top-ten \
             --config p/secrets \
+            --exclude '.github' \
             --sarif \
             --output semgrep.sarif \
             --metrics=off || true

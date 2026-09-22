@@ -399,7 +399,6 @@ public class PaymentConcurrencyAndIdempotencyTests {
             DefaultTransactionDefinition def = new DefaultTransactionDefinition();
             TransactionStatus status = transactionManager.getTransaction(def);
             try {
-                long start = System.currentTimeMillis();
                 walletRepository.findByUserIdWithLock(testUser.getId());
                 transactionManager.commit(status);
             } catch (Exception ex) {
