@@ -88,13 +88,13 @@ public class IdempotencyService {
 
         // 2. If already completed, return cached response verbatim immediately
         if (claim.status() == IdempotencyClaimService.ClaimStatus.ALREADY_COMPLETED) {
-            log.info("Idempotent replay for key '{}'. Returning cached response.", idempotencyKey);
+            log.info("Idempotent replay for key '{}'. Returning cached response.", sanitizeKey(idempotencyKey));
             return deserializeResponse(claim.record().getResponseBody(), responseClass, idempotencyKey);
         }
 
         // 3. If another node is actively processing, await completion (up to 5 seconds)
         if (claim.status() == IdempotencyClaimService.ClaimStatus.ALREADY_PROCESSING) {
-            log.info("Key '{}' is currently being processed by another cluster instance. Awaiting completion.", idempotencyKey);
+            log.info("Key '{}' is currently being processed by another cluster instance. Awaiting completion.", sanitizeKey(idempotencyKey));
             for (int i = 0; i < 50; i++) {
                 try {
                     Thread.sleep(100);
@@ -107,7 +107,7 @@ public class IdempotencyService {
                 if (polled.isPresent()) {
                     IdempotencyRecord record = polled.get();
                     if ("COMPLETED".equals(record.getStatus())) {
-                        log.info("Key '{}' completed by owner node. Returning cached response.", idempotencyKey);
+                        log.info("Key '{}' completed by owner node. Returning cached response.", sanitizeKey(idempotencyKey));
                         return deserializeResponse(record.getResponseBody(), responseClass, idempotencyKey);
                     }
                     if ("FAILED".equals(record.getStatus())) {
@@ -143,5 +143,9 @@ public class IdempotencyService {
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to deserialize cached response for key: " + idempotencyKey, e);
         }
+    }
+
+    private String sanitizeKey(String key) {
+        return key != null ? key.replaceAll("[\r\n\t]", "_") : "null";
     }
 }

@@ -19,11 +19,13 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@ToString(onlyExplicitlyIncluded = true)
 public class TransactionStateTransition {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @EqualsAndHashCode.Include
+    @ToString.Include
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -32,13 +34,16 @@ public class TransactionStateTransition {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "from_state", length = 50)
+    @ToString.Include
     private TransactionState fromState;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "to_state", nullable = false, length = 50)
+    @ToString.Include
     private TransactionState toState;
 
     @Column(name = "trigger_event", nullable = false, length = 100)
+    @ToString.Include
     private String triggerEvent;
 
     @Column(columnDefinition = "TEXT")

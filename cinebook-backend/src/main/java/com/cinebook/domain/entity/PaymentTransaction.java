@@ -18,11 +18,13 @@ import java.util.UUID;
 @Table(name = "payment_transactions")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@ToString(onlyExplicitlyIncluded = true)
 public class PaymentTransaction {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @EqualsAndHashCode.Include
+    @ToString.Include
     private UUID id;
 
     @JsonIgnore

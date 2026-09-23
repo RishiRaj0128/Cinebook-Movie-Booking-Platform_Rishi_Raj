@@ -76,7 +76,7 @@ public class IdempotencyClaimService {
             return new ClaimResult(ClaimStatus.CLAIMED, saved);
         } catch (DataIntegrityViolationException e) {
             // Concurrent race: another node inserted first
-            log.info("Concurrent insert race caught for idempotency key '{}'. Resolving owner record.", idempotencyKey);
+            log.info("Concurrent insert race caught for idempotency key '{}'. Resolving owner record.", sanitizeKey(idempotencyKey));
             IdempotencyRecord winner = idempotencyRepository.findByIdempotencyKey(idempotencyKey)
                     .orElseThrow(() -> new IllegalStateException("Record not found after unique constraint violation for key: " + idempotencyKey, e));
             verifyRequestHash(winner, requestHash, idempotencyKey);
@@ -98,9 +98,9 @@ public class IdempotencyClaimService {
                     record.setResponseStatusCode(statusCode);
                     record.setResponseBody(objectMapper.writeValueAsString(result));
                     idempotencyRepository.saveAndFlush(record);
-                    log.info("Idempotency record marked COMPLETED for key '{}'", idempotencyKey);
+                    log.info("Idempotency record marked COMPLETED for key '{}'", sanitizeKey(idempotencyKey));
                 } catch (JsonProcessingException e) {
-                    log.error("Failed to serialize response body for idempotency key '{}'", idempotencyKey, e);
+                    log.error("Failed to serialize response body for idempotency key '{}'", sanitizeKey(idempotencyKey), e);
                 }
             });
         });
@@ -115,7 +115,7 @@ public class IdempotencyClaimService {
                 record.setStatus("FAILED");
                 record.setResponseBody(failureReason);
                 idempotencyRepository.saveAndFlush(record);
-                log.warn("Idempotency record marked FAILED for key '{}': {}", idempotencyKey, failureReason);
+                log.warn("Idempotency record marked FAILED for key '{}': {}", sanitizeKey(idempotencyKey), failureReason);
             });
         });
     }
@@ -127,10 +127,14 @@ public class IdempotencyClaimService {
     private void verifyRequestHash(IdempotencyRecord record, String requestHash, String idempotencyKey) {
         if (!record.getRequestHash().equals(requestHash)) {
             log.warn("Idempotency conflict detected for key '{}'. Existing hash: {}, incoming hash: {}",
-                    idempotencyKey, record.getRequestHash(), requestHash);
+                    sanitizeKey(idempotencyKey), record.getRequestHash(), requestHash);
             throw new IdempotencyConflictException(
                     "Idempotency-Key '" + idempotencyKey + "' was already used with a different request payload."
             );
         }
+    }
+
+    private String sanitizeKey(String key) {
+        return key != null ? key.replaceAll("[\r\n\t]", "_") : "null";
     }
 }
