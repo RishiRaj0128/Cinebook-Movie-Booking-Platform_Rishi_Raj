@@ -8,8 +8,9 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-# Create unprivileged application group and user
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+# Update OS packages to patch vulnerabilities and create unprivileged application user
+RUN apk update && apk upgrade --no-cache && \
+    addgroup -S appgroup && adduser -S appuser -G appgroup
 
 # Copy compiled jar and assign ownership
 COPY --from=build --chown=appuser:appgroup /app/target/cinebook-backend-1.0.0.jar app.jar
