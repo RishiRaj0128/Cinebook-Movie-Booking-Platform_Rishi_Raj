@@ -82,7 +82,7 @@ razorpay:
 # ===== TMDB =====
 tmdb:
   api-key: ${TMDB_API_KEY:YOUR_TMDB_API_KEY}
-  base-url: https://api.themoviedb.org/3
+  base-url: ${TMDB_BASE_URL:https://api.tmdb.org/3}
   image-base: https://image.tmdb.org/t/p
 
 # ===== App =====
