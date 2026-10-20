@@ -38,7 +38,6 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [error, setError] = useState('');
   const [showRazorpaySandbox, setShowRazorpaySandbox] = useState(false);
-  const [customRazorpayKey, setCustomRazorpayKey] = useState('');
 
   const totalRupees = (booking.totalAmount / 100).toFixed(2);
   const show = booking.show;
@@ -85,43 +84,70 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     setShowRazorpaySandbox(true);
   };
 
-  const handleLaunchRealRazorpay = () => {
-    const keyToUse = customRazorpayKey.trim();
-    if (!keyToUse || !keyToUse.startsWith('rzp_')) {
-      setError(
-        'Please enter a valid Razorpay Key starting with rzp_test_ or rzp_live_'
-      );
-      return;
-    }
-
+  const handleLaunchRealRazorpay = async () => {
     try {
-      if ((window as any).Razorpay) {
-        const options = {
-          key: keyToUse,
-          amount: booking.totalAmount,
-          currency: 'INR',
-          name: 'CineBook Tickets',
-          description: `Booking for ${movie?.title}`,
-          handler: async function (response: any) {
-            await confirmAndFinalize(
-              response.razorpay_payment_id || 'pay_' + Date.now()
-            );
-          },
-          prefill: {
-            email: booking.user?.email || 'customer@cinebook.com',
-            name: booking.user?.fullName || 'Moviegoer',
-          },
-          theme: { color: '#e50914' },
-        };
-        const rzp = new (window as any).Razorpay(options);
-        rzp.open();
-      } else {
-        setError(
+      setProcessing(true);
+      setError('');
+
+      if (!(window as any).Razorpay) {
+        throw new Error(
           'Razorpay SDK not loaded. Please use the simulated test checkout.'
         );
       }
+
+      // 1. Fetch real Razorpay Order & configured Key ID from Backend
+      const order = await api.createPaymentOrder(booking.id);
+
+      // 2. Configure official Razorpay Checkout options
+      const options = {
+        key: order.razorpayKeyId,
+        amount: order.amount,
+        currency: order.currency || 'INR',
+        name: 'CineBook Tickets',
+        description: `Booking for ${movie?.title || 'Movie'} (${seatsList})`,
+        order_id: order.orderId,
+        prefill: {
+          email: booking.user?.email || 'user@cinebook.com',
+          name: booking.user?.fullName || 'Moviegoer',
+          contact: booking.user?.phone || '9876543210',
+        },
+        theme: { color: '#e50914' },
+        handler: async function (response: any) {
+          try {
+            setProcessing(true);
+            await api.verifyPayment({
+              bookingId: booking.id,
+              razorpayOrderId: response.razorpay_order_id || order.orderId,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+            });
+            await confirmAndFinalize(response.razorpay_payment_id);
+          } catch (verifyErr: any) {
+            setError(
+              verifyErr.message || 'Payment signature verification failed.'
+            );
+            setProcessing(false);
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            setProcessing(false);
+          },
+        },
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.on('payment.failed', function (failRes: any) {
+        setError(
+          failRes.error?.description ||
+            'Payment was declined by bank or gateway.'
+        );
+        setProcessing(false);
+      });
+      rzp.open();
     } catch (e: any) {
-      setError(e.message || 'Razorpay popup failed. Using sandbox payment.');
+      setError(e.message || 'Razorpay checkout initialization failed.');
+      setProcessing(false);
     }
   };
 
@@ -545,13 +571,35 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                     lineHeight: 1.5,
                   }}
                 >
-                  Simulate instant Razorpay authorization or provide your
-                  registered Key ID from{' '}
-                  <span style={{ color: '#60a5fa', fontWeight: 600 }}>
-                    dashboard.razorpay.com
-                  </span>
-                  .
+                  Pay securely with Razorpay using UPI, Credit/Debit Cards, Net Banking, or Wallets.
                 </div>
+
+                {/* Primary Action: Direct Razorpay Checkout */}
+                <button
+                  type="button"
+                  disabled={processing}
+                  onClick={handleLaunchRealRazorpay}
+                  style={{
+                    padding: '12px',
+                    borderRadius: 8,
+                    background: '#2563eb',
+                    color: '#ffffff',
+                    border: 'none',
+                    fontSize: '0.95rem',
+                    fontWeight: 800,
+                    cursor: processing ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    boxShadow: '0 4px 12px rgba(37,99,235,0.4)',
+                  }}
+                >
+                  <ExternalLink size={18} />
+                  {processing
+                    ? 'Connecting to Razorpay...'
+                    : `Pay ₹${totalRupees} with Razorpay`}
+                </button>
 
                 {/* Instant Simulation Action */}
                 <button
@@ -563,77 +611,23 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                     )
                   }
                   style={{
-                    padding: '12px',
+                    padding: '10px',
                     borderRadius: 8,
-                    background: '#2563eb',
-                    color: '#ffffff',
-                    border: 'none',
-                    fontSize: '0.95rem',
-                    fontWeight: 800,
-                    cursor: 'pointer',
+                    background: 'rgba(255,255,255,0.06)',
+                    color: '#94a3b8',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    cursor: processing ? 'not-allowed' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: 8,
-                    boxShadow: '0 4px 12px rgba(37,99,235,0.4)',
                   }}
                 >
-                  <Sparkles size={18} />
-                  {processing
-                    ? 'Processing with Razorpay...'
-                    : `Simulate Razorpay Success (Pay ₹${totalRupees})`}
+                  <Sparkles size={16} />
+                  Simulate Instant Success (1-Click Test)
                 </button>
-
-                {/* Custom Key Section */}
-                <div
-                  style={{
-                    borderTop: '1px dashed rgba(255,255,255,0.1)',
-                    paddingTop: 12,
-                  }}
-                >
-                  <label
-                    style={{
-                      display: 'block',
-                      fontSize: '0.8rem',
-                      color: '#94a3b8',
-                      marginBottom: 6,
-                    }}
-                  >
-                    Or test with your own Razorpay Key ID (optional):
-                  </label>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <input
-                      type="text"
-                      className="form-input"
-                      placeholder="rzp_test_YourKeyHere"
-                      value={customRazorpayKey}
-                      onChange={(e) => setCustomRazorpayKey(e.target.value)}
-                      style={{
-                        flex: 1,
-                        fontSize: '0.8rem',
-                        padding: '6px 12px',
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={handleLaunchRealRazorpay}
-                      style={{
-                        padding: '6px 12px',
-                        fontSize: '0.8rem',
-                        background: 'rgba(255,255,255,0.1)',
-                        border: '1px solid rgba(255,255,255,0.2)',
-                        color: '#ffffff',
-                        borderRadius: 8,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 4,
-                      }}
-                    >
-                      <ExternalLink size={13} /> Launch Popup
-                    </button>
-                  </div>
-                </div>
               </div>
             ) : (
               <div>
