@@ -44,21 +44,32 @@ spec:
             limits:
               cpu: "500m"
               memory: "768Mi"
-          # Liveness probe: checks if container JVM process is responsive. If fails, kubelet restarts the container.
+          # Startup probe: holds off liveness and readiness probes until JVM bootstrap completes.
+          # Allows up to 5s * 30 = 150s for slow cold-starts on resource-constrained developer laptops
+          # without prematurely restarting the container. Once successful, liveness takes over immediately.
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            periodSeconds: 5
+            failureThreshold: 30
+            timeoutSeconds: 3
+          # Liveness probe: checks if container JVM process remains responsive after startup.
+          # initialDelaySeconds is reduced to 5s because startupProbe already guards the bootstrap window.
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness
               port: 8080
-            initialDelaySeconds: 35
+            initialDelaySeconds: 5
             periodSeconds: 10
             timeoutSeconds: 3
             failureThreshold: 3
-          # Readiness probe: checks if Spring Boot context is initialized and ready to receive traffic.
+          # Readiness probe: checks if Spring Boot context is ready to accept user traffic.
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
               port: 8080
-            initialDelaySeconds: 25
+            initialDelaySeconds: 5
             periodSeconds: 5
             timeoutSeconds: 3
             failureThreshold: 3
