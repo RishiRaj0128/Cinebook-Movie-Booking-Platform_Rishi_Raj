@@ -1,0 +1,16 @@
+# deploy/terraform/terraform.tfvars.example
+# Copy this file to terraform.tfvars and fill in your values.
+# NEVER commit terraform.tfvars with real IPs or email addresses to version control.
+
+aws_region                = "us-east-1"
+instance_type             = "t3.micro"
+
+# Replace with your actual public IPv4 address in CIDR format (check via: curl https://checkip.amazonaws.com)
+my_ip_cidr                = "YOUR_PUBLIC_IP/32"
+
+# Replace with your actual email address to receive AWS Budgets threshold alerts
+budget_notification_email = "student@example.com"
+
+project_name              = "cinebook"
+environment               = "dev"
+owner                     = "student"

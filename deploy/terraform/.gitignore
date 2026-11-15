@@ -1,0 +1,13 @@
+# Local Terraform state and cache
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfplan
+
+# Local secret variables
+*.tfvars
+*.tfvars.json
+
+# Explicitly allow the example template to remain tracked
+!terraform.tfvars.example
