@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cinebook-backend
+  namespace: cinebook
+  labels:
+    app: cinebook-backend
+    app.kubernetes.io/name: cinebook-backend
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: cinebook-platform
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: cinebook-backend
+  template:
+    metadata:
+      labels:
+        app: cinebook-backend
+    spec:
+      containers:
+        - name: backend
+          # Supports both local build (kind load docker-image cinebook-backend:latest --name cinebook)
+          # and pulling from GHCR if configured. imagePullPolicy: IfNotPresent uses local cluster image first.
+          image: cinebook-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            # Run with in-memory H2 database so local testing requires zero external database or cloud credentials.
+            # NOTE: Each pod replica runs its own separate in-memory H2 database instance.
+            - name: SPRING_PROFILES_ACTIVE
+              value: "local"
+            # Explicitly enables Spring Boot Actuator Kubernetes liveness and readiness probe endpoints.
+            - name: MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED
+              value: "true"
+            - name: PORT
+              value: "8080"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "384Mi"
+            limits:
+              cpu: "500m"
+              memory: "768Mi"
+          # Liveness probe: checks if container JVM process is responsive. If fails, kubelet restarts the container.
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 35
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          # Readiness probe: checks if Spring Boot context is initialized and ready to receive traffic.
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 25
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3

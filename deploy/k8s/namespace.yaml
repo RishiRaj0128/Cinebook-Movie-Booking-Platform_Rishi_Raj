@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cinebook
+  labels:
+    app.kubernetes.io/name: cinebook
+    app.kubernetes.io/part-of: cinebook-platform

@@ -1,0 +1,14 @@
+# deploy/kind-config.yaml
+# Configures a local Kubernetes cluster named "cinebook" using kind.
+# Maps containerPort 30080 (the Kubernetes NodePort) to hostPort 30080
+# on the local machine so the backend service is accessible at http://localhost:30080.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: cinebook
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 30080
+        hostPort: 30080
+        protocol: TCP
+        listenAddress: "0.0.0.0"
