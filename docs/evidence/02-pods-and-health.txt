@@ -1,0 +1,110 @@
+==================================================================
+CineBook Pods and Health Verification
+Timestamp (UTC): 2026-11-16T11:49:16Z
+==================================================================
+
+--- 1. Pod Inventory (get pods -o wide) ---
+NAME                                READY   STATUS    RESTARTS   AGE   IP           NODE                     NOMINATED NODE   READINESS GATES
+cinebook-backend-6d5f4cdb47-dfpbc   1/1     Running   0          85s   10.244.0.5   cinebook-control-plane   <none>           <none>
+cinebook-backend-6d5f4cdb47-vh2nt   1/1     Running   0          85s   10.244.0.6   cinebook-control-plane   <none>           <none>
+
+--- 2. Deployment Specification & Replicas ---
+Name:                   cinebook-backend
+Namespace:              cinebook
+CreationTimestamp:      Mon, 16 Nov 2026 17:17:52 +0530
+Labels:                 app=cinebook-backend
+                        app.kubernetes.io/component=backend
+                        app.kubernetes.io/name=cinebook-backend
+                        app.kubernetes.io/part-of=cinebook-platform
+Annotations:            deployment.kubernetes.io/revision: 1
+Selector:               app=cinebook-backend
+Replicas:               2 desired | 2 updated | 2 total | 2 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:  app=cinebook-backend
+  Containers:
+   backend:
+    Image:      cinebook-backend:latest
+    Port:       8080/TCP (http)
+    Host Port:  0/TCP (http)
+    Limits:
+      cpu:     500m
+      memory:  768Mi
+    Requests:
+      cpu:      100m
+      memory:   384Mi
+    Liveness:   http-get http://:8080/actuator/health/liveness delay=5s timeout=3s period=10s #success=1 #failure=3
+    Readiness:  http-get http://:8080/actuator/health/readiness delay=5s timeout=3s period=5s #success=1 #failure=3
+    Startup:    http-get http://:8080/actuator/health/liveness delay=0s timeout=3s period=5s #success=1 #failure=30
+    Environment:
+      SPRING_PROFILES_ACTIVE:                     local
+      MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED:  true
+      PORT:                                       8080
+    Mounts:                                       <none>
+  Volumes:                                        <none>
+  Node-Selectors:                                 <none>
+  Tolerations:                                    <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Available      True    MinimumReplicasAvailable
+  Progressing    True    NewReplicaSetAvailable
+OldReplicaSets:  <none>
+NewReplicaSet:   cinebook-backend-6d5f4cdb47 (2/2 replicas created)
+Events:
+  Type    Reason             Age   From                   Message
+  ----    ------             ----  ----                   -------
+  Normal  ScalingReplicaSet  85s   deployment-controller  Scaled up replica set cinebook-backend-6d5f4cdb47 from 0 to 2
+
+--- 3. Actuator Health Endpoint HTTP Response (Port 30080) ---
+GET http://localhost:30080/actuator/health
+HTTP/1.1 200 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/vnd.spring-boot.actuator.v3+json
+Transfer-Encoding: chunked
+Date: Mon, 16 Nov 2026 11:49:17 GMT
+
+{"status":"UP","groups":["liveness","readiness"]}
+--- 4. Actuator Liveness Endpoint HTTP Response ---
+HTTP/1.1 200 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/vnd.spring-boot.actuator.v3+json
+Transfer-Encoding: chunked
+Date: Mon, 16 Nov 2026 11:49:18 GMT
+
+{"status":"UP"}
+--- 5. Actuator Readiness Endpoint HTTP Response ---
+HTTP/1.1 200 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/vnd.spring-boot.actuator.v3+json
+Transfer-Encoding: chunked
+Date: Mon, 16 Nov 2026 11:49:18 GMT
+
+{"status":"UP"}
+Stage 2 Exit Code: 0

@@ -1,0 +1,44 @@
+==================================================================
+CineBook Terraform Configuration Validation Report
+Timestamp (UTC): 2026-11-16T11:55:17Z
+==================================================================
+
+Terraform Version: Terraform v1.17.1
+
+--- 1. Format Check (terraform fmt -check) ---
+Formatting: PASS (All HCL code follows canonical formatting style)
+
+--- 2. Initialization (terraform init -backend=false) ---
+[0m[1mInitializing provider plugins...[0m
+- Finding hashicorp/aws versions matching "~> 5.0"...
+- Installing hashicorp/aws v5.100.0...
+- Installed hashicorp/aws v5.100.0 (signed by HashiCorp)
+
+Terraform has created a lock file [1m.terraform.lock.hcl[0m to record the provider
+selections it made above. Include this file in your version control repository
+so that Terraform can guarantee to make the same selections by default when
+you run "terraform init" in the future.[0m
+
+[0m[1m[32mTerraform has been successfully initialized![0m[32m[0m
+[0m[32m
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.[0m
+--- 3. Static Configuration Validation (terraform validate) ---
+[32m[1mSuccess![0m The configuration is valid.
+[0m
+Validation: PASS (Configuration is syntactically valid and internally consistent)
+
+==================================================================
+SRE OPERATIONAL NOTE:
+1. 'terraform validate' checks configuration syntax and internal types
+   without contacting AWS APIs and without requiring credentials.
+2. 'terraform plan' generates an execution diff, requires read-only AWS
+   credentials, and incurs ZERO cloud costs.
+3. 'terraform apply' and 'terraform destroy' provision and decommission
+   real cloud resources and should only be run intentionally.
+==================================================================

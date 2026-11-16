@@ -1,0 +1,18 @@
+==================================================================
+CineBook Self-Healing Drill: Targeted Pod Deletion
+Target Pod: cinebook-backend-6d5f4cdb47-dfpbc
+Started (UTC): 2026-11-16T11:49:18Z
+==================================================================
+Deleting pod 'cinebook-backend-6d5f4cdb47-dfpbc'...
+pod "cinebook-backend-6d5f4cdb47-dfpbc" deleted from cinebook namespace
+
+RESULT: PASS
+Measured Recovery Duration: 77 seconds
+All 2/2 replicas returned to Ready state automatically.
+
+Post-Recovery Pod Status:
+NAME                                READY   STATUS    RESTARTS   AGE     IP           NODE                     NOMINATED NODE   READINESS GATES
+cinebook-backend-6d5f4cdb47-kl2xl   1/1     Running   0          76s     10.244.0.7   cinebook-control-plane   <none>           <none>
+cinebook-backend-6d5f4cdb47-vh2nt   1/1     Running   0          2m43s   10.244.0.6   cinebook-control-plane   <none>           <none>
+
+Stage 3 Exit Code: 0

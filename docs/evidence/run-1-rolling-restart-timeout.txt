@@ -1,0 +1,142 @@
+==================================================================
+          CineBook Automated SRE Evidence Collector               
+==================================================================
+Execution Started (UTC): 2026-11-16T11:34:30Z
+[1/5] Bootstrapping kind cluster and measuring deployment rollout...
+==================================================================
+          CineBook Kubernetes Cluster Bootstrap (kind)            
+==================================================================
+[1/6] Checking required CLI tools...
+  - docker: FOUND (/c/Program Files/Docker/Docker/resources/bin/docker)
+  - kind: FOUND (/c/Users/HP/AppData/Local/Microsoft/WinGet/Packages/Kubernetes.kind_Microsoft.Winget.Source_8wekyb3d8bbwe/kind)
+  - kubectl: FOUND (/c/Program Files/Docker/Docker/resources/bin/kubectl)
+[2/6] Checking for kind cluster 'cinebook'...
+  - Creating kind cluster 'cinebook' using deploy/kind-config.yaml...
+Creating cluster "cinebook" ...
+ • Ensuring node image (kindest/node:v1.37.0) 🖼️  ...
+ ✓ Ensuring node image (kindest/node:v1.37.0) 🖼️
+ • Preparing nodes 📦   ...
+ ✓ Preparing nodes 📦 
+ • Writing configuration 📜  ...
+ ✓ Writing configuration 📜
+ • Starting control-plane 🕹️  ...
+ ✓ Starting control-plane 🕹️
+ • Installing CNI 🔌  ...
+ ✓ Installing CNI 🔌
+ • Installing StorageClass 💾  ...
+ ✓ Installing StorageClass 💾
+Set kubectl context to "kind-cinebook"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-cinebook
+
+Thanks for using kind! 😊
+[3/6] Building backend container image locally (cinebook-backend:latest)...
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 876B 0.1s done
+#1 DONE 0.2s
+
+#2 [internal] load metadata for docker.io/library/maven:3.9.6-eclipse-temurin-21
+#2 DONE 1.8s
+
+#3 [internal] load metadata for docker.io/library/eclipse-temurin:21-jre-alpine
+#3 DONE 1.9s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 2B done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 DONE 0.0s
+
+#6 [stage-1 1/4] FROM docker.io/library/eclipse-temurin:21-jre-alpine@sha256:ac05c3c42b7c2f1a52c9bd52f01041fa1958231b15ebeae7420429cbc5baf474
+#6 resolve docker.io/library/eclipse-temurin:21-jre-alpine@sha256:ac05c3c42b7c2f1a52c9bd52f01041fa1958231b15ebeae7420429cbc5baf474 0.1s done
+#6 DONE 0.2s
+
+#7 [build 1/5] FROM docker.io/library/maven:3.9.6-eclipse-temurin-21@sha256:8d63d4c1902cb12d9e79a70671b18ebe26358cb592561af33ca1808f00d935cb
+#7 resolve docker.io/library/maven:3.9.6-eclipse-temurin-21@sha256:8d63d4c1902cb12d9e79a70671b18ebe26358cb592561af33ca1808f00d935cb
+#7 resolve docker.io/library/maven:3.9.6-eclipse-temurin-21@sha256:8d63d4c1902cb12d9e79a70671b18ebe26358cb592561af33ca1808f00d935cb 0.1s done
+#7 DONE 0.2s
+
+#5 [internal] load build context
+#5 transferring context: 11.17kB 0.0s done
+#5 DONE 0.1s
+
+#8 [build 5/5] RUN mvn clean package -DskipTests
+#8 CACHED
+
+#9 [stage-1 2/4] WORKDIR /app
+#9 CACHED
+
+#10 [stage-1 3/4] RUN apk update && apk upgrade --no-cache &&     addgroup -S appgroup && adduser -S appuser -G appgroup
+#10 CACHED
+
+#11 [build 3/5] COPY pom.xml .
+#11 CACHED
+
+#12 [build 4/5] COPY src ./src
+#12 CACHED
+
+#13 [build 2/5] WORKDIR /app
+#13 CACHED
+
+#14 [stage-1 4/4] COPY --from=build --chown=appuser:appgroup /app/target/cinebook-backend-1.0.0.jar app.jar
+#14 CACHED
+
+#15 exporting to image
+#15 exporting layers done
+#15 exporting manifest sha256:146f644ba3d039a7469acf44df4e0613d06d918e429bb4b9874659bda65755b2 0.1s done
+#15 exporting config sha256:c7f0cff1e87f33b0813596a1bf3c0d562440a05b5be2d92faf67c89f30d5c93f 0.1s done
+#15 exporting attestation manifest sha256:027a733dcd4b230e9f190717a2eeb4741e64579eac3a3caa6ef18bfe03b246d7
+#15 exporting attestation manifest sha256:027a733dcd4b230e9f190717a2eeb4741e64579eac3a3caa6ef18bfe03b246d7 0.1s done
+#15 exporting manifest list sha256:21de06622f9df8f35fedb973172d316f3be1c88763d3a30cfb9f33eb9349c5e3 0.1s done
+#15 naming to docker.io/library/cinebook-backend:latest
+#15 naming to docker.io/library/cinebook-backend:latest 0.0s done
+#15 unpacking to docker.io/library/cinebook-backend:latest 0.0s done
+#15 DONE 0.5s
+[4/6] Sideloading image 'cinebook-backend:latest' into kind cluster 'cinebook'...
+Image: "cinebook-backend:latest" with ID "sha256:21de06622f9df8f35fedb973172d316f3be1c88763d3a30cfb9f33eb9349c5e3" not yet present on node "cinebook-control-plane", loading...
+[5/6] Applying Kubernetes manifests...
+  - Applying Namespace...
+namespace/cinebook created
+  - Applying Deployment (replicas: 2, profile: local)...
+deployment.apps/cinebook-backend created
+  - Applying NodePort Service (hostPort: 30080 -> containerPort: 8080)...
+service/cinebook-backend created
+  - Applying HorizontalPodAutoscaler (CPU 70%, 2-4 replicas)...
+horizontalpodautoscaler.autoscaling/cinebook-backend-hpa created
+[6/6] Waiting for Deployment rollout to complete (timeout: 120s)...
+Waiting for deployment "cinebook-backend" rollout to finish: 0 of 2 updated replicas are available...
+Waiting for deployment "cinebook-backend" rollout to finish: 1 of 2 updated replicas are available...
+deployment "cinebook-backend" successfully rolled out
+==================================================================
+   CineBook Backend is successfully running on local Kubernetes!  
+==================================================================
+Active Pods:
+NAME                                READY   STATUS    RESTARTS   AGE   IP           NODE                     NOMINATED NODE   READINESS GATES
+cinebook-backend-6d5f4cdb47-5sgjh   1/1     Running   0          68s   10.244.0.6   cinebook-control-plane   <none>           <none>
+cinebook-backend-6d5f4cdb47-zd42q   1/1     Running   0          68s   10.244.0.5   cinebook-control-plane   <none>           <none>
+
+Service Endpoint:
+NAME               TYPE       CLUSTER-IP     EXTERNAL-IP   PORT(S)          AGE
+cinebook-backend   NodePort   10.96.92.215   <none>        8080:30080/TCP   68s
+
+Verify cluster health with curl:
+  curl -s http://localhost:30080/actuator/health
+  curl -s http://localhost:30080/actuator/health/liveness
+  curl -s http://localhost:30080/actuator/health/readiness
+==================================================================
+[2/5] Inspecting active Pods, Deployment details, and Actuator health...
+  -> Saved to docs/evidence/02-pods-and-health.txt
+[3/5] Executing self-healing experiment (pod kill & recovery timing)...
+  -> Saved to docs/evidence/03-self-healing.txt
+[4/5] Executing rolling restart with continuous HTTP probing...
+deployment.apps/cinebook-backend restarted
+Waiting for deployment "cinebook-backend" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "cinebook-backend" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "cinebook-backend" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "cinebook-backend" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "cinebook-backend" rollout to finish: 1 old replicas are pending termination...
+error: timed out waiting for the condition

@@ -1,0 +1,18 @@
+==================================================================
+CineBook Rolling Restart (Zero-Downtime Verification)
+Timestamp (UTC): 2026-11-16T11:53:07Z
+Rollout Duration: 151 seconds
+Timeout Setting:  240 seconds
+==================================================================
+Total Probes Executed:   242
+Successful Probes (200): 240
+Failed Probes (non-200): 2
+RESULT: DEGRADED (2 requests failed during rollout)
+
+Final Pod Replicas:
+NAME                                READY   STATUS        RESTARTS   AGE     IP           NODE                     NOMINATED NODE   READINESS GATES
+cinebook-backend-6d5f4cdb47-vh2nt   1/1     Terminating   0          5m15s   10.244.0.6   cinebook-control-plane   <none>           <none>
+cinebook-backend-7f64f8b475-xlcpn   1/1     Running       0          2m31s   10.244.0.8   cinebook-control-plane   <none>           <none>
+cinebook-backend-7f64f8b475-zg665   1/1     Running       0          77s     10.244.0.9   cinebook-control-plane   <none>           <none>
+
+Stage 4 Exit Code: 0

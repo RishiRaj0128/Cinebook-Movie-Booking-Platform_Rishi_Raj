@@ -16,6 +16,7 @@ set -euo pipefail
 CLUSTER_NAME="cinebook"
 KIND_CONFIG="deploy/kind-config.yaml"
 IMAGE_NAME="cinebook-backend:latest"
+ROLLOUT_TIMEOUT_SECS=240
 
 echo "=================================================================="
 echo "          CineBook Kubernetes Cluster Bootstrap (kind)            "
@@ -72,8 +73,8 @@ echo "  - Applying HorizontalPodAutoscaler (CPU 70%, 2-4 replicas)..."
 kubectl apply -f deploy/k8s/hpa.yaml
 
 # 6. Wait for Deployment Rollout
-echo "[6/6] Waiting for Deployment rollout to complete (timeout: 120s)..."
-kubectl rollout status deployment/cinebook-backend -n cinebook --timeout=120s
+echo "[6/6] Waiting for Deployment rollout to complete (timeout: ${ROLLOUT_TIMEOUT_SECS}s)..."
+kubectl rollout status deployment/cinebook-backend -n cinebook --timeout="${ROLLOUT_TIMEOUT_SECS}s"
 
 echo "=================================================================="
 echo "   CineBook Backend is successfully running on local Kubernetes!  "

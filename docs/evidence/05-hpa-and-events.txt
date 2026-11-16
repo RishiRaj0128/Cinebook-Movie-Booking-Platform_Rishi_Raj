@@ -1,0 +1,136 @@
+==================================================================
+CineBook HPA Status & Cluster Events
+Timestamp (UTC): 2026-11-16T11:53:07Z
+==================================================================
+
+--- 1. HorizontalPodAutoscaler Status ---
+NAME                   REFERENCE                     TARGETS              MINPODS   MAXPODS   REPLICAS   AGE
+cinebook-backend-hpa   Deployment/cinebook-backend   cpu: <unknown>/70%   2         4         2          5m14s
+Name:                                                  cinebook-backend-hpa
+Namespace:                                             cinebook
+Labels:                                                app=cinebook-backend
+                                                       app.kubernetes.io/component=backend
+                                                       app.kubernetes.io/name=cinebook-backend
+                                                       app.kubernetes.io/part-of=cinebook-platform
+Annotations:                                           <none>
+CreationTimestamp:                                     Mon, 16 Nov 2026 17:17:53 +0530
+Reference:                                             Deployment/cinebook-backend
+Metrics:                                               ( current / target )
+  resource cpu on pods  (as a percentage of request):  <unknown> / 70%
+Min replicas:                                          2
+Max replicas:                                          4
+Deployment pods:                                       2 current / 0 desired
+Conditions:
+  Type           Status  Reason                   Message
+  ----           ------  ------                   -------
+  AbleToScale    True    SucceededGetScale        the HPA controller was able to get the target's current scale
+  ScalingActive  False   FailedGetResourceMetric  the HPA was unable to compute the replica count: failed to get cpu utilization: unable to get metrics for resource cpu: unable to fetch metrics from resource metrics API: the server could not find the requested resource (get pods.metrics.k8s.io)
+Events:
+  Type     Reason                        Age                     From                       Message
+  ----     ------                        ----                    ----                       -------
+  Warning  FailedComputeMetricsReplicas  2m30s (x12 over 5m15s)  horizontal-pod-autoscaler  invalid metrics (1 invalid out of 1), first error is: failed to get cpu resource metric value: failed to get cpu utilization: unable to get metrics for resource cpu: unable to fetch metrics from resource metrics API: the server could not find the requested resource (get pods.metrics.k8s.io)
+  Warning  FailedGetResourceMetric       15s (x21 over 5m15s)    horizontal-pod-autoscaler  failed to get cpu utilization: unable to get metrics for resource cpu: unable to fetch metrics from resource metrics API: the server could not find the requested resource (get pods.metrics.k8s.io)
+
+--- 2. Recent Kubernetes Namespace Events ---
+LAST SEEN   TYPE      REASON                         OBJECT                                         MESSAGE
+5m16s       Normal    Scheduled                      pod/cinebook-backend-6d5f4cdb47-dfpbc          Successfully assigned cinebook/cinebook-backend-6d5f4cdb47-dfpbc to cinebook-control-plane
+5m16s       Normal    SuccessfulCreate               replicaset/cinebook-backend-6d5f4cdb47         Created pod: cinebook-backend-6d5f4cdb47-vh2nt
+5m16s       Normal    SuccessfulCreate               replicaset/cinebook-backend-6d5f4cdb47         Created pod: cinebook-backend-6d5f4cdb47-dfpbc
+5m16s       Normal    Scheduled                      pod/cinebook-backend-6d5f4cdb47-vh2nt          Successfully assigned cinebook/cinebook-backend-6d5f4cdb47-vh2nt to cinebook-control-plane
+5m16s       Normal    ScalingReplicaSet              deployment/cinebook-backend                    Scaled up replica set cinebook-backend-6d5f4cdb47 from 0 to 2
+15s         Warning   FailedGetResourceMetric        horizontalpodautoscaler/cinebook-backend-hpa   failed to get cpu utilization: unable to get metrics for resource cpu: unable to fetch metrics from resource metrics API: the server could not find the requested resource (get pods.metrics.k8s.io)
+2m30s       Warning   FailedComputeMetricsReplicas   horizontalpodautoscaler/cinebook-backend-hpa   invalid metrics (1 invalid out of 1), first error is: failed to get cpu resource metric value: failed to get cpu utilization: unable to get metrics for resource cpu: unable to fetch metrics from resource metrics API: the server could not find the requested resource (get pods.metrics.k8s.io)
+5m14s       Normal    Pulled                         pod/cinebook-backend-6d5f4cdb47-dfpbc          Container image "cinebook-backend:latest" already present on machine and can be accessed by the pod
+5m14s       Normal    Pulled                         pod/cinebook-backend-6d5f4cdb47-vh2nt          Container image "cinebook-backend:latest" already present on machine and can be accessed by the pod
+5m13s       Normal    Created                        pod/cinebook-backend-6d5f4cdb47-vh2nt          Container created
+5m13s       Normal    Created                        pod/cinebook-backend-6d5f4cdb47-dfpbc          Container created
+5m13s       Normal    Started                        pod/cinebook-backend-6d5f4cdb47-vh2nt          Container started
+5m13s       Normal    Started                        pod/cinebook-backend-6d5f4cdb47-dfpbc          Container started
+4m15s       Warning   Unhealthy                      pod/cinebook-backend-6d5f4cdb47-dfpbc          Startup probe failed: Get "http://10.244.0.5:8080/actuator/health/liveness": dial tcp 10.244.0.5:8080: connect: connection refused
+4m15s       Warning   Unhealthy                      pod/cinebook-backend-6d5f4cdb47-vh2nt          Startup probe failed: Get "http://10.244.0.6:8080/actuator/health/liveness": dial tcp 10.244.0.6:8080: connect: connection refused
+3m57s       Warning   Unhealthy                      pod/cinebook-backend-6d5f4cdb47-dfpbc          Readiness probe failed: HTTP probe failed with statuscode: 503
+2s          Warning   Unhealthy                      pod/cinebook-backend-6d5f4cdb47-vh2nt          Readiness probe failed: HTTP probe failed with statuscode: 503
+3m49s       Normal    Killing                        pod/cinebook-backend-6d5f4cdb47-dfpbc          Stopping container backend
+3m49s       Normal    Scheduled                      pod/cinebook-backend-6d5f4cdb47-kl2xl          Successfully assigned cinebook/cinebook-backend-6d5f4cdb47-kl2xl to cinebook-control-plane
+3m49s       Normal    SuccessfulCreate               replicaset/cinebook-backend-6d5f4cdb47         Created pod: cinebook-backend-6d5f4cdb47-kl2xl
+3m48s       Normal    Created                        pod/cinebook-backend-6d5f4cdb47-kl2xl          Container created
+3m48s       Warning   Unhealthy                      pod/cinebook-backend-6d5f4cdb47-dfpbc          Readiness probe failed: Get "http://10.244.0.5:8080/actuator/health/readiness": dial tcp 10.244.0.5:8080: connect: connection refused
+3m48s       Normal    Pulled                         pod/cinebook-backend-6d5f4cdb47-kl2xl          Container image "cinebook-backend:latest" already present on machine and can be accessed by the pod
+3m48s       Normal    Started                        pod/cinebook-backend-6d5f4cdb47-kl2xl          Container started
+2m54s       Warning   Unhealthy                      pod/cinebook-backend-6d5f4cdb47-kl2xl          Startup probe failed: Get "http://10.244.0.7:8080/actuator/health/liveness": dial tcp 10.244.0.7:8080: connect: connection refused
+2m46s       Warning   Unhealthy                      pod/cinebook-backend-6d5f4cdb47-kl2xl          Startup probe failed: Get "http://10.244.0.7:8080/actuator/health/liveness": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2m39s       Warning   Unhealthy                      pod/cinebook-backend-6d5f4cdb47-kl2xl          Readiness probe failed: HTTP probe failed with statuscode: 503
+2m32s       Normal    SuccessfulCreate               replicaset/cinebook-backend-7f64f8b475         Created pod: cinebook-backend-7f64f8b475-xlcpn
+2m32s       Normal    ScalingReplicaSet              deployment/cinebook-backend                    Scaled up replica set cinebook-backend-7f64f8b475 from 0 to 1
+2m32s       Normal    Scheduled                      pod/cinebook-backend-7f64f8b475-xlcpn          Successfully assigned cinebook/cinebook-backend-7f64f8b475-xlcpn to cinebook-control-plane
+2m31s       Normal    Pulled                         pod/cinebook-backend-7f64f8b475-xlcpn          Container image "cinebook-backend:latest" already present on machine and can be accessed by the pod
+2m31s       Normal    Created                        pod/cinebook-backend-7f64f8b475-xlcpn          Container created
+2m31s       Normal    Started                        pod/cinebook-backend-7f64f8b475-xlcpn          Container started
+97s         Warning   Unhealthy                      pod/cinebook-backend-7f64f8b475-xlcpn          Startup probe failed: Get "http://10.244.0.8:8080/actuator/health/liveness": dial tcp 10.244.0.8:8080: connect: connection refused
+84s         Warning   Unhealthy                      pod/cinebook-backend-7f64f8b475-xlcpn          Readiness probe failed: HTTP probe failed with statuscode: 503
+79s         Normal    Killing                        pod/cinebook-backend-6d5f4cdb47-kl2xl          Stopping container backend
+79s         Normal    SuccessfulDelete               replicaset/cinebook-backend-6d5f4cdb47         Deleted pod: cinebook-backend-6d5f4cdb47-kl2xl
+79s         Normal    ScalingReplicaSet              deployment/cinebook-backend                    Scaled up replica set cinebook-backend-7f64f8b475 from 1 to 2
+79s         Normal    ScalingReplicaSet              deployment/cinebook-backend                    Scaled down replica set cinebook-backend-6d5f4cdb47 from 2 to 1
+78s         Normal    SuccessfulCreate               replicaset/cinebook-backend-7f64f8b475         Created pod: cinebook-backend-7f64f8b475-zg665
+78s         Normal    Scheduled                      pod/cinebook-backend-7f64f8b475-zg665          Successfully assigned cinebook/cinebook-backend-7f64f8b475-zg665 to cinebook-control-plane
+77s         Normal    Started                        pod/cinebook-backend-7f64f8b475-zg665          Container started
+77s         Normal    Created                        pod/cinebook-backend-7f64f8b475-zg665          Container created
+77s         Normal    Pulled                         pod/cinebook-backend-7f64f8b475-zg665          Container image "cinebook-backend:latest" already present on machine and can be accessed by the pod
+23s         Warning   Unhealthy                      pod/cinebook-backend-7f64f8b475-zg665          Startup probe failed: Get "http://10.244.0.9:8080/actuator/health/liveness": dial tcp 10.244.0.9:8080: connect: connection refused
+15s         Warning   Unhealthy                      pod/cinebook-backend-7f64f8b475-zg665          Startup probe failed: Get "http://10.244.0.9:8080/actuator/health/liveness": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+8s          Warning   Unhealthy                      pod/cinebook-backend-7f64f8b475-zg665          Readiness probe failed: HTTP probe failed with statuscode: 503
+3s          Normal    SuccessfulDelete               replicaset/cinebook-backend-6d5f4cdb47         Deleted pod: cinebook-backend-6d5f4cdb47-vh2nt
+3s          Normal    Killing                        pod/cinebook-backend-6d5f4cdb47-vh2nt          Stopping container backend
+3s          Normal    ScalingReplicaSet              deployment/cinebook-backend                    Scaled down replica set cinebook-backend-6d5f4cdb47 from 1 to 0
+
+Stage 5 Exit Code: 0
+
+==================================================================
+Post-Metrics-Server Installation: Active Live HPA & Resource Usage
+Timestamp (UTC): 
+==================================================================
+
+--- 1. Node Resource Usage (kubectl top nodes) ---
+NAME                     CPU(cores)   CPU(%)   MEMORY(bytes)   MEMORY(%)   
+cinebook-control-plane   257m         12%      1636Mi          33%         
+
+
+--- 2. Pod Resource Usage (kubectl top pods -n cinebook) ---
+NAME                                CPU(cores)   MEMORY(bytes)   
+cinebook-backend-7f64f8b475-xlcpn   7m           320Mi           
+cinebook-backend-7f64f8b475-zg665   9m           318Mi           
+
+
+--- 3. Live HPA Status (kubectl get hpa -n cinebook) ---
+NAME                   REFERENCE                     TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+cinebook-backend-hpa   Deployment/cinebook-backend   cpu: 11%/70%   2         4         2          7m10s
+
+
+--- 4. Live HPA Details (kubectl describe hpa cinebook-backend-hpa -n cinebook) ---
+Name:                                                  cinebook-backend-hpa
+Namespace:                                             cinebook
+Labels:                                                app=cinebook-backend
+                                                       app.kubernetes.io/component=backend
+                                                       app.kubernetes.io/name=cinebook-backend
+                                                       app.kubernetes.io/part-of=cinebook-platform
+Annotations:                                           <none>
+CreationTimestamp:                                     Mon, 16 Nov 2026 17:17:53 +0530
+Reference:                                             Deployment/cinebook-backend
+Metrics:                                               ( current / target )
+  resource cpu on pods  (as a percentage of request):  11% (11m) / 70%
+Min replicas:                                          2
+Max replicas:                                          4
+Deployment pods:                                       2 current / 2 desired
+Conditions:
+  Type            Status  Reason            Message
+  ----            ------  ------            -------
+  AbleToScale     True    ReadyForNewScale  recommended size matches current size
+  ScalingActive   True    ValidMetricFound  the HPA was able to successfully calculate a replica count from cpu resource utilization (percentage of request)
+  ScalingLimited  True    TooFewReplicas    the desired replica count is less than the minimum replica count
+Events:
+  Type     Reason                        Age                     From                       Message
+  ----     ------                        ----                    ----                       -------
+  Warning  FailedComputeMetricsReplicas  4m25s (x12 over 7m10s)  horizontal-pod-autoscaler  invalid metrics (1 invalid out of 1), first error is: failed to get cpu resource metric value: failed to get cpu utilization: unable to get metrics for resource cpu: unable to fetch metrics from resource metrics API: the server could not find the requested resource (get pods.metrics.k8s.io)
+  Warning  FailedGetResourceMetric       2m10s (x21 over 7m10s)  horizontal-pod-autoscaler  failed to get cpu utilization: unable to get metrics for resource cpu: unable to fetch metrics from resource metrics API: the server could not find the requested resource (get pods.metrics.k8s.io)
+
