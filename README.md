@@ -228,8 +228,8 @@ stateDiagram-v2
 
 ### 5.1 Real-Time Seat Hold & Concurrency Control
 When a customer selects seats, the backend executes `SeatLockService.holdSeats()` inside a transactional lock.
-- Sets `ShowSeat.status = HELD` and `ShowSeat.lockedAt = LocalDateTime.now()`.
-- A background scheduler (`LockExpiryScheduler`) runs every 60 seconds to release seats where `lockedAt` exceeds 10 minutes.
+- Sets `ShowSeat.status = LOCKED`, `ShowSeat.lockedAt = LocalDateTime.now()`, and `ShowSeat.lockExpiresAt = now.plusMinutes(10)`.
+- A background scheduler (`LockExpiryScheduler`) runs every 30 seconds to release seats where `lockExpiresAt < now`.
 
 ### 5.2 Dynamic Tiered Pricing Model
 Seat prices are calculated via `PricingUtil.calculateSeatPrice()`:
@@ -386,7 +386,23 @@ Cinebook-Movie-Booking-Platform/
 
 ---
 
-## 🚀 Local Development & Setup Guide
+## 🚀 Deployment Options
+
+CineBook supports multiple deployment models across local and cloud environments:
+
+| Environment | Infrastructure / Orchestration | Health Endpoint | Documentation Link |
+|---|---|---|---|
+| **Local Multi-Container** | Docker Compose (`postgres`, `redis`, `backend:8080`, `frontend:3000:8080`) | `http://localhost:8080/actuator/health` | [docs/deployment.md](docs/deployment.md#1-option-a-local-run-via-docker-compose) |
+| **Local Kubernetes** | kind (2 replicas, HPA, startup/liveness/readiness probes, NodePort 30080) | `http://localhost:30080/actuator/health` | [docs/deployment.md](docs/deployment.md#2-option-b-local-kubernetes-deployment-kind) |
+| **Cloud AWS (Free Tier)** | Terraform (single t3.micro EC2, restricted SG, SSM AMI, Budget Alarm) | `http://<EC2_IP>:8080/actuator/health` | [docs/deployment.md](docs/deployment.md#3-option-c-aws-cloud-infrastructure-terraform) |
+| **Hosted Production** | Render (Backend API + Neon PostgreSQL) & Netlify (Frontend CDN SPA) | `https://cinebook-api-6cw7.onrender.com/actuator/health` | [docs/deployment.md](docs/deployment.md#4-option-d-production-demo-render--netlify) |
+
+- **Deployment History & Lessons Learned**: See [docs/deployment-history.md](docs/deployment-history.md)
+- **SRE & DevOps Evidence Matrix**: See [docs/evidence.md](docs/evidence.md)
+
+---
+
+## 💻 Local Development & Setup Guide
 
 ### Prerequisites
 - **Java 21 JDK**
