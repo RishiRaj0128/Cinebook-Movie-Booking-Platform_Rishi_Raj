@@ -14,6 +14,7 @@ from app.api.v1.recommendations import router as recommendations_router
 from app.api.v1.chat import router as chat_router
 from app.api.v1.feedback import router as feedback_router
 from app.api.v1.memory import router as memory_router
+from app.observability.metrics import prometheus_metrics_middleware, create_metrics_app
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -70,6 +71,11 @@ async def correlation_id_and_timing_middleware(request: Request, call_next):
 
 # Register Exception Handlers
 register_exception_handlers(app)
+
+# Prometheus Observability Middleware & Endpoint
+app.middleware("http")(prometheus_metrics_middleware)
+metrics_app = create_metrics_app()
+app.mount("/metrics", metrics_app)
 
 # Include Routers
 app.include_router(health_router)
