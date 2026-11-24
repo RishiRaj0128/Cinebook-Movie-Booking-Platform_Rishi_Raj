@@ -120,7 +120,7 @@ class ChatMessage(Base):
     user_id = Column(UUID(as_uuid=True), nullable=False)
     role = Column(String(20), nullable=False)
     content = Column(Text, nullable=False)
-    metadata = Column(Text, nullable=True)
+    message_metadata = Column("metadata", Text, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 class UserMemory(Base):

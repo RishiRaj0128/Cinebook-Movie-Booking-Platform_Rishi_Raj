@@ -12,12 +12,15 @@ if db_url.startswith("postgresql://"):
     db_url = db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 
 # Configure SQLAlchemy engine with pooled connections
+connect_args = {"connect_timeout": 2} if settings.ENVIRONMENT == "testing" else {}
+
 engine = create_engine(
     db_url,
     pool_size=settings.DB_POOL_SIZE,
     max_overflow=settings.DB_MAX_OVERFLOW,
     pool_timeout=settings.DB_POOL_TIMEOUT,
     pool_pre_ping=True,  # Health check connections before handoff
+    connect_args=connect_args,
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

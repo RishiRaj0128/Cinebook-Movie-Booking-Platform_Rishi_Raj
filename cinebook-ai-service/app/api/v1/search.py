@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.database.connection import get_db
 from app.schemas.search import SemanticSearchRequest, SemanticSearchResponse, MovieSearchResult
 from app.core.security import get_optional_user, AuthenticatedUser
+from app.services.retrieval_service import RetrievalService
 
 router = APIRouter(prefix="/search", tags=["Semantic Search"])
 
@@ -16,13 +17,20 @@ def semantic_search(
 ):
     """
     Semantic & Hybrid Movie Search endpoint.
-    Combines vector cosine similarity with full-text search.
+    Combines vector cosine similarity with full-text search using Reciprocal Rank Fusion.
     """
     start_time = time.time()
 
-    # Search execution will be wired into retrieval_service in Phase 3 & 4
-    # For Phase 2 baseline validation, return typed empty result structure
-    results = []
+    results = RetrievalService.search_hybrid(
+        db=db,
+        query=request.query,
+        genre=request.genre,
+        language=request.language,
+        min_rating=request.min_rating,
+        limit=request.limit,
+        hybrid=request.hybrid
+    )
+
     execution_time_ms = round((time.time() - start_time) * 1000, 2)
 
     return SemanticSearchResponse(
