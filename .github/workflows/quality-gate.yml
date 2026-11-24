@@ -46,6 +46,7 @@ jobs:
             "Backend Build & Verify (Java 21)"
             "Frontend Build & Test (TypeScript + Vitest)"
             "Container Build, Trivy Security Scan & GHCR Publish"
+            "AI Service Test & Evaluation (Python 3.12)"
           )
 
           echo "Monitoring required gates until completion..."

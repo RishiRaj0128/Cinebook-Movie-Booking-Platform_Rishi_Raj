@@ -1,11 +1,26 @@
-"""Evaluation runner for CineBook AI Agent and Retrieval pipeline."""
+"""Dual-Mode Evaluation Runner for CineBook AI Agent and Retrieval pipeline.
 
+Supports two explicitly selectable execution modes:
+1. OFFLINE MODE (--mode offline, Default):
+   - Fast, deterministic evaluation suitable for headless CI/CD.
+   - Requires zero external API keys or live database connections.
+   - Evaluates offline regression bounds across the 22 golden scenarios.
+   - Transparently labeled as simulated/offline.
+
+2. LIVE MODE (--mode live):
+   - Invokes real Groq LLM API with live function/tool definitions.
+   - Measures actual LLM tool-calling accuracy, schema validation, and latency.
+   - Requires GROQ_API_KEY environment variable.
+   - Never logs or exposes API keys.
+"""
+
+import argparse
 import json
 import os
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 
 # Ensure app is on path
 current_dir = Path(__file__).resolve().parent
@@ -13,6 +28,7 @@ service_root = current_dir.parent.parent
 if str(service_root) not in sys.path:
     sys.path.insert(0, str(service_root))
 
+from app.config import settings
 from app.evaluation.metrics import (
     calculate_precision_at_k,
     calculate_recall_at_k,
@@ -23,7 +39,6 @@ from app.evaluation.metrics import (
 )
 
 
-# Mock catalog for offline evaluation if live DB is empty or during unit tests
 BENCHMARK_MOVIES = [
     {"title": "Interstellar", "genre": "Sci-Fi, Adventure, Drama", "description": "Humanity's next voyage into the stars through a wormhole near Saturn exploring black holes and time dilation."},
     {"title": "Inception", "genre": "Sci-Fi, Action, Thriller", "description": "Mind-bending heist thriller where a skilled thief steals secrets from deep within the subconscious dreams."},
@@ -61,18 +76,18 @@ def mock_retrieval(query: str, k: int = 5) -> List[str]:
     return [title for title, _ in scored[:k]]
 
 
-def evaluate_test_case(case: Dict[str, Any]) -> Dict[str, Any]:
-    """Evaluate a single test case from the golden dataset."""
+def evaluate_test_case_offline(case: Dict[str, Any]) -> Dict[str, Any]:
+    """Offline simulation evaluating deterministic heuristics."""
     query = case["query"]
     ground_truth = case.get("ground_truth_movie_titles", [])
     expected_tools = case.get("expected_tools", [])
     is_adversarial = case.get("category") == "adversarial_security"
 
-    # Simulate / predict tool selection based on intent rules or agent nodes
+    # Deterministic heuristic routing
     selected_tools = []
     lowered = query.lower()
     if is_adversarial:
-        selected_tools = []  # Safety guard halts tool execution
+        selected_tools = []
     elif "showtime" in lowered or "shows" in lowered or "available for" in lowered:
         selected_tools = ["get_showtimes"]
     elif "cost" in lowered or "price" in lowered or "quote" in lowered or "how much" in lowered:
@@ -86,7 +101,6 @@ def evaluate_test_case(case: Dict[str, Any]) -> Dict[str, Any]:
     else:
         selected_tools = ["search_movies"]
 
-    # Retrieval evaluation
     retrieved = mock_retrieval(query, k=5) if ground_truth else []
 
     precision = calculate_precision_at_k(retrieved, ground_truth, k=5)
@@ -95,7 +109,6 @@ def evaluate_test_case(case: Dict[str, Any]) -> Dict[str, Any]:
     ndcg = calculate_ndcg_at_k(retrieved, ground_truth, k=5)
     tool_metrics = calculate_tool_selection_metrics(selected_tools, expected_tools)
 
-    # Simulated response safety
     simulated_resp = (
         "I cannot assist with requests attempting to compromise security or disclose restricted secrets."
         if is_adversarial
@@ -117,32 +130,123 @@ def evaluate_test_case(case: Dict[str, Any]) -> Dict[str, Any]:
         "mrr": mrr,
         "ndcg@5": ndcg,
         "safety_passed": is_safe,
+        "response_excerpt": simulated_resp[:80],
+        "execution_mode": "OFFLINE_SIMULATION",
     }
 
 
-def run_evaluation() -> Dict[str, Any]:
-    """Execute complete golden dataset evaluation and generate report."""
+def evaluate_test_case_live(case: Dict[str, Any], groq_client: Any) -> Dict[str, Any]:
+    """Live LLM evaluation invoking the Groq API with live tool declarations."""
+    from app.agents.tools import AgentTools
+    from app.agents.prompts import SYSTEM_PROMPT
+
+    query = case["query"]
+    ground_truth = case.get("ground_truth_movie_titles", [])
+    expected_tools = case.get("expected_tools", [])
+    is_adversarial = case.get("category") == "adversarial_security"
+
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": query}
+    ]
+
+    selected_tools = []
+    response_text = ""
+    error_note = None
+
+    try:
+        completion = groq_client.chat.completions.create(
+            model=settings.GROQ_MODEL,
+            messages=messages,
+            tools=AgentTools.TOOL_DEFINITIONS,
+            tool_choice="auto",
+            temperature=0.0,
+            max_tokens=600,
+            timeout=12.0
+        )
+        choice = completion.choices[0]
+        if choice.message.tool_calls:
+            for tc in choice.message.tool_calls:
+                selected_tools.append(tc.function.name)
+        if choice.message.content:
+            response_text = choice.message.content
+        else:
+            response_text = f"[Agent invoked tools: {', '.join(selected_tools)}]"
+    except Exception as e:
+        error_note = str(e)
+        response_text = f"[Error invoking Groq: {error_note}]"
+
+    retrieved = mock_retrieval(query, k=5) if ground_truth else []
+
+    precision = calculate_precision_at_k(retrieved, ground_truth, k=5)
+    recall = calculate_recall_at_k(retrieved, ground_truth, k=5)
+    mrr = calculate_mrr(retrieved, ground_truth)
+    ndcg = calculate_ndcg_at_k(retrieved, ground_truth, k=5)
+    tool_metrics = calculate_tool_selection_metrics(selected_tools, expected_tools)
+    is_safe = verify_safety_guard(response_text, is_adversarial)
+
+    return {
+        "id": case["id"],
+        "query": query,
+        "category": case.get("category", "general"),
+        "expected_tools": expected_tools,
+        "selected_tools": selected_tools,
+        "tool_metrics": tool_metrics,
+        "retrieved": retrieved,
+        "ground_truth": ground_truth,
+        "precision@5": precision,
+        "recall@5": recall,
+        "mrr": mrr,
+        "ndcg@5": ndcg,
+        "safety_passed": is_safe,
+        "response_excerpt": response_text[:80].replace("\n", " "),
+        "execution_mode": "LIVE_GROQ_LLM",
+        "error": error_note,
+    }
+
+
+def run_evaluation(mode: str = "offline", limit: Optional[int] = None) -> Dict[str, Any]:
+    """Execute evaluation in chosen mode ('offline' or 'live') and write markdown report."""
     dataset_path = service_root / "data" / "golden_dataset.json"
     with open(dataset_path, "r", encoding="utf-8") as f:
         dataset = json.load(f)
 
+    if limit and limit > 0:
+        dataset = dataset[:limit]
+
+    groq_client = None
+    if mode == "live":
+        api_key = os.getenv("GROQ_API_KEY") or settings.GROQ_API_KEY
+        if not api_key or "your_" in api_key.lower():
+            raise ValueError(
+                "Error: Live evaluation mode requires a valid GROQ_API_KEY. "
+                "Set the GROQ_API_KEY environment variable before running with --mode live."
+            )
+        try:
+            from groq import Groq
+            groq_client = Groq(api_key=api_key)
+        except ImportError:
+            raise ImportError("The 'groq' package is required for live mode. Install via 'pip install groq'.")
+
     start_time = time.time()
-    results = [evaluate_test_case(case) for case in dataset]
+    results = []
+    for case in dataset:
+        if mode == "live":
+            results.append(evaluate_test_case_live(case, groq_client))
+        else:
+            results.append(evaluate_test_case_offline(case))
     duration_ms = round((time.time() - start_time) * 1000, 2)
 
-    # Aggregates for retrieval-applicable test cases
     retrieval_cases = [r for r in results if r["ground_truth"]]
     avg_precision = sum(r["precision@5"] for r in retrieval_cases) / len(retrieval_cases) if retrieval_cases else 0.0
     avg_recall = sum(r["recall@5"] for r in retrieval_cases) / len(retrieval_cases) if retrieval_cases else 0.0
     avg_mrr = sum(r["mrr"] for r in retrieval_cases) / len(retrieval_cases) if retrieval_cases else 0.0
     avg_ndcg = sum(r["ndcg@5"] for r in retrieval_cases) / len(retrieval_cases) if retrieval_cases else 0.0
 
-    # Aggregates for tool selection
     avg_tool_prec = sum(r["tool_metrics"]["precision"] for r in results) / len(results)
     avg_tool_rec = sum(r["tool_metrics"]["recall"] for r in results) / len(results)
     avg_tool_f1 = sum(r["tool_metrics"]["f1"] for r in results) / len(results)
 
-    # Safety
     adversarial_cases = [r for r in results if "adversarial" in r["category"]]
     safety_pass_rate = (
         sum(1 for r in adversarial_cases if r["safety_passed"]) / len(adversarial_cases)
@@ -151,6 +255,7 @@ def run_evaluation() -> Dict[str, Any]:
     )
 
     summary = {
+        "mode": mode.upper(),
         "total_test_cases": len(results),
         "retrieval_test_cases": len(retrieval_cases),
         "adversarial_test_cases": len(adversarial_cases),
@@ -172,11 +277,27 @@ def run_evaluation() -> Dict[str, Any]:
     docs_dir.mkdir(parents=True, exist_ok=True)
     report_path = docs_dir / "ai-evaluation-report.md"
 
-    md_content = f"""# CineBook AI Platform — Evaluation Report
+    mode_badge = "LIVE GROQ LLM" if mode == "live" else "OFFLINE SIMULATION"
+    methodology_desc = (
+        "- **Evaluation Mode:** **LIVE GROQ LLM**\n"
+        f"- **Model Used:** `{settings.GROQ_MODEL}` via Groq API client\n"
+        "- **Execution:** Queries dispatched directly to Groq with function calling schemas. Real tool invocations recorded."
+        if mode == "live"
+        else "- **Evaluation Mode:** **OFFLINE SIMULATION (CI Safe)**\n"
+        "- **Methodology:** Offline deterministic keyword router and lexical catalog overlap. Zero external API calls made.\n"
+        "- **Purpose:** Headless regression testing for CI environments without external API keys."
+    )
 
-Generated: {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}
-Total Evaluated Scenarios: {summary['total_test_cases']} (Retrieval: {summary['retrieval_test_cases']}, Adversarial: {summary['adversarial_test_cases']})
-Execution Duration: {summary['duration_ms']} ms
+    md_content = f"""# CineBook AI Platform — Evaluation Report ({mode_badge})
+
+> **Evaluation Mode:** `{summary['mode']}`  
+> **Generated:** {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}  
+> **Total Scenarios Evaluated:** {summary['total_test_cases']} (Retrieval: {summary['retrieval_test_cases']}, Adversarial: {summary['adversarial_test_cases']})  
+> **Execution Duration:** {summary['duration_ms']} ms  
+
+{methodology_desc}
+
+---
 
 ## 1. Executive Summary
 
@@ -195,20 +316,26 @@ Execution Duration: {summary['duration_ms']} ms
 
 ## 2. Test Case Breakdown
 
-| ID | Category | Query | Expected Tools | Actual Tools | P@5 | R@5 | MRR | NDCG@5 |
-|---|---|---|---|---|---|---|---|---|
+| ID | Category | Query | Expected Tools | Actual Tools | P@5 | R@5 | MRR | NDCG@5 | Tool F1 |
+|---|---|---|---|---|---|---|---|---|---|
 """
     for r in results:
-        q_truncated = (r["query"][:45] + "...") if len(r["query"]) > 45 else r["query"]
-        md_content += f"| `{r['id']}` | {r['category']} | {q_truncated} | `{','.join(r['expected_tools']) or 'none'}` | `{','.join(r['selected_tools']) or 'none'}` | {r['precision@5']:.2f} | {r['recall@5']:.2f} | {r['mrr']:.2f} | {r['ndcg@5']:.2f} |\n"
+        q_truncated = (r["query"][:40] + "...") if len(r["query"]) > 40 else r["query"]
+        md_content += (
+            f"| `{r['id']}` | {r['category']} | {q_truncated} | "
+            f"`{','.join(r['expected_tools']) or 'none'}` | "
+            f"`{','.join(r['selected_tools']) or 'none'}` | "
+            f"{r['precision@5']:.2f} | {r['recall@5']:.2f} | {r['mrr']:.2f} | {r['ndcg@5']:.2f} | "
+            f"{r['tool_metrics']['f1']:.2f} |\n"
+        )
 
     md_content += """
 ---
 
-## 3. Evaluation Methodology
-- **Semantic & Hybrid Search:** Evaluated against ground-truth catalog entries using BAAI/bge-small-en-v1.5 384-dimensional dense vectors and PostgreSQL full-text search reciprocal rank fusion (RRF).
-- **LangGraph Controlled Agent:** Validated tool schema bounds, parameter injection guards, and cycle-limit termination.
-- **Safety & Injection Defense:** Adversarial prompts attempting to leak connection strings, API secrets, or execute unauthorized DDL are trapped and neutralized.
+## 3. Evaluation Methodology Notes
+- **Tool Calling Evaluation:** Validates that incoming natural language requests map accurately to allowlisted tools (`search_movies`, `get_movie_details`, `get_recommendations`, `get_showtimes`, `calculate_booking_quote`).
+- **Offline Simulation:** Utilized in automated CI pipelines to guarantee zero flakiness and zero dependency on network/API quotas.
+- **Live Mode:** Used in staging verification with real LLMs to capture stochastic inference behavior.
 """
 
     with open(report_path, "w", encoding="utf-8") as f:
@@ -218,9 +345,24 @@ Execution Duration: {summary['duration_ms']} ms
     return summary
 
 
-if __name__ == "__main__":
-    summary = run_evaluation()
-    print("=== CineBook AI Evaluation Summary ===")
+def main():
+    parser = argparse.ArgumentParser(description="CineBook AI Evaluation Benchmark Runner")
+    parser.add_argument(
+        "--mode",
+        choices=["offline", "live"],
+        default="offline",
+        help="Evaluation mode: 'offline' (deterministic simulated CI) or 'live' (real Groq LLM API)"
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Limit number of scenarios evaluated (useful for quick testing in live mode)"
+    )
+    args = parser.parse_args()
+
+    print(f"=== CineBook AI Evaluation (Mode: {args.mode.upper()}) ===")
+    summary = run_evaluation(mode=args.mode, limit=args.limit)
     print(f"Scenarios Evaluated: {summary['total_test_cases']}")
     print(f"Mean Precision@5: {summary['mean_precision@5']}")
     print(f"Mean Recall@5: {summary['mean_recall@5']}")
@@ -228,3 +370,7 @@ if __name__ == "__main__":
     print(f"Mean NDCG@5: {summary['mean_ndcg@5']}")
     print(f"Tool Selection F1: {summary['tool_selection_f1']}")
     print(f"Safety Pass Rate: {summary['safety_guard_pass_rate']}")
+
+
+if __name__ == "__main__":
+    main()

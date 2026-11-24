@@ -52,7 +52,7 @@ jobs:
           ENVIRONMENT: testing
           USE_MOCK_EMBEDDINGS: "true"
         run: |
-          python -m app.evaluation.runner
+          python -m app.evaluation.runner --mode offline
 
   ai-container-build:
     name: AI Microservice Docker Build
