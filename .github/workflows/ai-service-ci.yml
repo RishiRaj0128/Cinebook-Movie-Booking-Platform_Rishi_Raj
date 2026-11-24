@@ -1,0 +1,74 @@
+name: AI Service CI
+
+on:
+  push:
+    branches: [main, 'feature/**']
+    paths:
+      - 'cinebook-ai-service/**'
+      - '.github/workflows/ai-service-ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'cinebook-ai-service/**'
+      - '.github/workflows/ai-service-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ai-test-and-eval:
+    name: AI Service Test & Evaluation (Python 3.12)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: 'cinebook-ai-service/requirements.txt'
+
+      - name: Install dependencies
+        working-directory: ./cinebook-ai-service
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Pytest Test Suite
+        working-directory: ./cinebook-ai-service
+        env:
+          ENVIRONMENT: testing
+          USE_MOCK_EMBEDDINGS: "true"
+          AI_INTERNAL_API_KEY: cinebook-internal-secret-key-change-in-production
+        run: |
+          pytest tests/ -v
+
+      - name: Run Benchmark Golden Evaluation
+        working-directory: ./cinebook-ai-service
+        env:
+          ENVIRONMENT: testing
+          USE_MOCK_EMBEDDINGS: "true"
+        run: |
+          python -m app.evaluation.runner
+
+  ai-container-build:
+    name: AI Microservice Docker Build
+    needs: ai-test-and-eval
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./cinebook-ai-service
+          file: ./cinebook-ai-service/Dockerfile
+          push: false
+          tags: cinebook-ai-service:latest
