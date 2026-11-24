@@ -1,8 +1,8 @@
 # CineBook AI Platform — Evaluation Report
 
-Generated: 2026-11-24 14:29:17 UTC
+Generated: 2026-11-24 14:36:42 UTC
 Total Evaluated Scenarios: 22 (Retrieval: 17, Adversarial: 2)
-Execution Duration: 2.93 ms
+Execution Duration: 3.24 ms
 
 ## 1. Executive Summary
 
