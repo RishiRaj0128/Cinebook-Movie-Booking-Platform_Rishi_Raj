@@ -93,6 +93,13 @@ app:
     duration-minutes: 10
   frontend-url: ${FRONTEND_URL:https://coruscating-eclair-2724dd.netlify.app/}
 
+# ===== CineBook AI Microservice Integration =====
+cinebook:
+  ai-service:
+    url: ${AI_SERVICE_URL:http://localhost:8000}
+    timeout-ms: ${AI_SERVICE_TIMEOUT_MS:8000}
+    api-key: ${AI_INTERNAL_API_KEY:cinebook-internal-secret-key-change-in-production}
+
 # ===== Actuator =====
 management:
   endpoints:

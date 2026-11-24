@@ -11,22 +11,30 @@ import {
   ShieldCheck,
   RefreshCw,
   Lock,
+  Repeat,
+  Utensils,
+  Share2,
 } from 'lucide-react';
-import { Booking } from '../types';
+import { Booking, ResaleListing } from '../types';
 import QRCode from 'qrcode';
 
 interface TicketModalProps {
   booking: Booking;
   onClose: () => void;
+  onListOnFairExchange?: (listing: ResaleListing) => void;
 }
 
 export const TicketModal: React.FC<TicketModalProps> = ({
   booking,
   onClose,
+  onListOnFairExchange,
 }) => {
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [secondsLeft, setSecondsLeft] = useState<number>(15);
   const [dynamicToken, setDynamicToken] = useState<string>('');
+  const [resaleListed, setResaleListed] = useState<boolean>(false);
+  const [resaleSuccessMsg, setResaleSuccessMsg] = useState<string>('');
+
 
   const show = booking.show;
   const movie = show?.movie;
@@ -322,6 +330,35 @@ export const TicketModal: React.FC<TicketModalProps> = ({
         // print window handling
       }
     }, 250);
+  };
+  const handleListForResale = () => {
+    if (resaleListed) return;
+    const listing: ResaleListing = {
+      id: `resale-${booking.id}`,
+      originalBookingId: booking.id,
+      movieTitle: movie?.title || 'Movie',
+      theaterName: theater?.name || 'Multiplex Cinema',
+      screenName: screen?.name || 'Screen 1',
+      city: theater?.city || 'Mumbai',
+      showTime: `${showDate}, ${showTime}`,
+      seats: seatsList.split(', ').map((s) => s.trim()),
+      faceValuePaise: booking.totalAmount,
+      sellerName: userName,
+      sellerEmail: userEmail,
+      listedAt: 'Just now',
+      status: 'AVAILABLE',
+      posterUrl:
+        movie?.posterUrl ||
+        'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400&q=80',
+    };
+
+    setResaleListed(true);
+    setResaleSuccessMsg(
+      `✓ Ticket listed on Fair Exchange at exact face value (₹${totalRupees}). When bought, you will be auto-refunded!`
+    );
+    if (onListOnFairExchange) {
+      onListOnFairExchange(listing);
+    }
   };
 
   return (
@@ -845,27 +882,39 @@ export const TicketModal: React.FC<TicketModalProps> = ({
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 10,
           }}
         >
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button
               className="btn btn-secondary"
               onClick={handlePrint}
-              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem' }}
             >
-              <Printer size={16} /> Print / Save PDF
+              <Printer size={15} /> Print / Save PDF
             </button>
             <button
               className="btn btn-secondary"
               onClick={handleCopy}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem' }}
+            >
+              {copied ? '✓ Copied Details!' : '📋 Copy Details'}
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={handleListForResale}
+              disabled={resaleListed}
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: 6,
                 fontSize: '0.85rem',
+                color: resaleListed ? '#34d399' : '#f87171',
+                borderColor: resaleListed ? '#10b981' : 'rgba(239, 68, 68, 0.4)',
               }}
             >
-              {copied ? '✓ Copied Details!' : '📋 Copy Details'}
+              <Repeat size={15} /> {resaleListed ? 'Listed on Fair Exchange' : 'List on Fair Exchange'}
             </button>
           </div>
           <button className="btn btn-primary" onClick={onClose}>

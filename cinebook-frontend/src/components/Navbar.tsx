@@ -1,5 +1,5 @@
 import React from 'react';
-import { Film, User, LogOut, Ticket, MapPin, PlusCircle } from 'lucide-react';
+import { Film, User, LogOut, Ticket, MapPin, PlusCircle, Repeat, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 interface NavbarProps {
@@ -9,6 +9,8 @@ interface NavbarProps {
   onOpenAuth: () => void;
   onOpenBookings: () => void;
   onOpenAdmin: () => void;
+  onOpenFairExchange: () => void;
+  onOpenAiChat?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -18,6 +20,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAuth,
   onOpenBookings,
   onOpenAdmin,
+  onOpenFairExchange,
+  onOpenAiChat,
 }) => {
   const { user, logout, isAdmin } = useAuth();
 
@@ -99,6 +103,61 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        {onOpenAiChat && (
+          <button
+            className="btn btn-secondary"
+            onClick={onOpenAiChat}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              borderColor: 'rgba(229, 9, 20, 0.4)',
+              color: '#f87171',
+              background: 'rgba(229, 9, 20, 0.08)',
+            }}
+          >
+            <Sparkles size={15} color="#e50914" /> AI Concierge
+            <span
+              style={{
+                background: '#e50914',
+                color: '#fff',
+                fontSize: '0.65rem',
+                fontWeight: 800,
+                padding: '1px 6px',
+                borderRadius: 10,
+              }}
+            >
+              Agent
+            </span>
+          </button>
+        )}
+
+        <button
+          className="btn btn-secondary"
+          onClick={onOpenFairExchange}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            borderColor: 'rgba(16, 185, 129, 0.4)',
+            color: '#34d399',
+          }}
+        >
+          <Repeat size={15} /> Fair Exchange
+          <span
+            style={{
+              background: '#10b981',
+              color: '#064e3b',
+              fontSize: '0.65rem',
+              fontWeight: 800,
+              padding: '1px 6px',
+              borderRadius: 10,
+            }}
+          >
+            Live
+          </span>
+        </button>
+
         {isAdmin && (
           <button className="btn btn-secondary" onClick={onOpenAdmin}>
             <PlusCircle size={16} /> Admin Panel

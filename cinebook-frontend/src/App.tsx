@@ -9,9 +9,12 @@ import { AdminDashboardModal } from './components/AdminDashboardModal';
 import { TicketModal } from './components/TicketModal';
 import { TrailerModal } from './components/TrailerModal';
 import { AiSearchBox } from './components/AiSearchBox';
-import { Movie, Show, Booking } from './types';
+import { FairExchangeModal } from './components/booking/FairExchangeModal';
+import { GroupBookingModal } from './components/booking/GroupBookingModal';
+import { AIChatDrawer } from './components/ai/AIChatDrawer';
+import { Movie, Show, Booking, ResaleListing, GroupBookingSession } from './types';
 import { api } from './services/api';
-import { Film, Filter, Play, CheckCircle } from 'lucide-react';
+import { Film, Filter, Play, CheckCircle, Sparkles } from 'lucide-react';
 
 export function App() {
   const [movies, setMovies] = useState<Movie[]>([]);
@@ -30,6 +33,11 @@ export function App() {
   const [trailerMovie, setTrailerMovie] = useState<Movie | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // New Innovative Features State
+  const [showFairExchangeModal, setShowFairExchangeModal] = useState<boolean>(false);
+  const [userResaleListings, setUserResaleListings] = useState<ResaleListing[]>([]);
+  const [activeGroupSession, setActiveGroupSession] = useState<GroupBookingSession | null>(null);
+
   const displayedMovies = movies.filter((m) => {
     const matchesLang =
       !selectedLanguage ||
@@ -43,6 +51,7 @@ export function App() {
   const [showBookingsModal, setShowBookingsModal] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [showSuccessBanner, setShowSuccessBanner] = useState(false);
+  const [showAiChatDrawer, setShowAiChatDrawer] = useState(false);
 
   useEffect(() => {
     fetchMovies();
@@ -60,6 +69,80 @@ export function App() {
         setConfirmedBooking(b);
       } catch (err) {
         console.error('Failed to load scanned ticket pass:', err);
+      }
+    }
+
+    const groupId = params.get('groupId');
+    if (groupId) {
+      const stored = localStorage.getItem(`cinebook_group_${groupId}`);
+      if (stored) {
+        try {
+          setActiveGroupSession(JSON.parse(stored));
+        } catch {}
+      } else {
+        // Fallback demo group session if opened on a different machine
+        const demoSession: GroupBookingSession = {
+          groupId,
+          show: {
+            id: 'grp-show-1',
+            movie: {
+              id: 'm-grp',
+              title: 'Roshagni',
+              description: 'Action blockbuster screening',
+              durationMinutes: 140,
+              genre: 'Action, Thriller',
+              language: 'Kannada',
+              posterUrl: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400&q=80',
+              releaseDate: '2026-01-01',
+              isActive: true,
+            },
+            screen: {
+              id: 'scr-grp',
+              name: 'IMAX Screen 1',
+              totalRows: 5,
+              totalColumns: 8,
+              theater: {
+                id: 'th-grp',
+                name: 'PVR IMAX Director\'s Cut',
+                city: 'Mumbai',
+                address: 'Central Mall, Downtown',
+              },
+            },
+            startTime: new Date().toISOString(),
+            endTime: new Date(Date.now() + 2.5 * 3600 * 1000).toISOString(),
+            basePrice: 30000,
+            isActive: true,
+          },
+          organizerName: 'Organizer Friend',
+          organizerEmail: 'friend@example.com',
+          seats: [
+            {
+              seatId: 'seat-C4',
+              seatLabel: 'C4',
+              pricePaise: 30000,
+              claimedBy: 'Organizer Friend',
+              claimedEmail: 'friend@example.com',
+              isPaid: true,
+              paidAt: new Date().toISOString(),
+            },
+            {
+              seatId: 'seat-C5',
+              seatLabel: 'C5',
+              pricePaise: 30000,
+              isPaid: false,
+            },
+            {
+              seatId: 'seat-C6',
+              seatLabel: 'C6',
+              pricePaise: 30000,
+              isPaid: false,
+            },
+          ],
+          expiresAt: Date.now() + 8 * 60 * 1000,
+          status: 'PENDING',
+          createdAt: Date.now(),
+        };
+        setActiveGroupSession(demoSession);
       }
     }
   };
@@ -112,6 +195,8 @@ export function App() {
         onOpenAuth={() => setShowAuthModal(true)}
         onOpenBookings={() => setShowBookingsModal(true)}
         onOpenAdmin={() => setShowAdminModal(true)}
+        onOpenFairExchange={() => setShowFairExchangeModal(true)}
+        onOpenAiChat={() => setShowAiChatDrawer(true)}
       />
 
       {showSuccessBanner && (
@@ -456,6 +541,7 @@ export function App() {
           show={selectedShow}
           onClose={() => setSelectedShow(null)}
           onOpenAuth={() => setShowAuthModal(true)}
+          onOpenGroupSession={(s) => setActiveGroupSession(s)}
           onSuccess={(booking) => {
             setConfirmedBooking(booking);
             setShowSuccessBanner(true);
@@ -469,8 +555,84 @@ export function App() {
         <TicketModal
           booking={confirmedBooking}
           onClose={() => setConfirmedBooking(null)}
+          onListOnFairExchange={(listing) => {
+            setUserResaleListings((prev) => [listing, ...prev]);
+            setShowFairExchangeModal(true);
+          }}
         />
       )}
+
+      {/* Fair Exchange Resale & Waitlist Modal */}
+      {showFairExchangeModal && (
+        <FairExchangeModal
+          userResaleListings={userResaleListings}
+          onClose={() => setShowFairExchangeModal(false)}
+          onTicketPurchased={(booking) => {
+            setConfirmedBooking(booking);
+            setShowSuccessBanner(true);
+            setTimeout(() => setShowSuccessBanner(false), 8000);
+          }}
+        />
+      )}
+
+      {/* Shared Group Booking Modal (When opened from link or invitation) */}
+      {activeGroupSession && (
+        <GroupBookingModal
+          session={activeGroupSession}
+          onClose={() => setActiveGroupSession(null)}
+          onUpdateSession={(updated) => setActiveGroupSession(updated)}
+          onCompleteBooking={(finalized) => {
+            setActiveGroupSession(null);
+            setConfirmedBooking(finalized);
+            setShowSuccessBanner(true);
+            setTimeout(() => setShowSuccessBanner(false), 8000);
+          }}
+        />
+      )}
+      {/* AI Assistant Floating Button */}
+      <button
+        onClick={() => setShowAiChatDrawer(true)}
+        title="Open AI Concierge"
+        style={{
+          position: 'fixed',
+          bottom: '24px',
+          right: '24px',
+          zIndex: 900,
+          background: 'linear-gradient(135deg, #e50914, #ff5722)',
+          color: '#ffffff',
+          border: 'none',
+          borderRadius: '50px',
+          padding: '12px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          fontWeight: 700,
+          fontSize: '0.9rem',
+          boxShadow: '0 8px 24px rgba(229, 9, 20, 0.45)',
+          cursor: 'pointer',
+          transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.05)')}
+        onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+      >
+        <Sparkles size={18} />
+        <span>Ask AI</span>
+      </button>
+
+      {/* AI Concierge Slide-out Drawer */}
+      <AIChatDrawer
+        isOpen={showAiChatDrawer}
+        onClose={() => setShowAiChatDrawer(false)}
+        onSelectMovie={(title) => {
+          const matched = movies.find((m) =>
+            m.title.toLowerCase().includes(title.toLowerCase())
+          );
+          if (matched) {
+            handleSelectMovie(matched);
+            setShowAiChatDrawer(false);
+          }
+        }}
+      />
     </div>
   );
 }

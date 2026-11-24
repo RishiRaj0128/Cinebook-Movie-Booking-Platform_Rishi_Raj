@@ -1,19 +1,89 @@
 services:
   postgres:
-    image: postgres:16
-    environment: {POSTGRES_DB: cinebook, POSTGRES_PASSWORD: postgres}
-    ports: ["5432:5432"]
+    image: pgvector/pgvector:pg16
+    container_name: cinebook-postgres
+    environment:
+      POSTGRES_DB: cinebook
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d cinebook"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cinebook-network
+
   redis:
     image: redis:7-alpine
-    ports: ["6379:6379"]
+    container_name: cinebook-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - cinebook-network
+
+  ai-service:
+    build:
+      context: ./cinebook-ai-service
+      dockerfile: Dockerfile
+    container_name: cinebook-ai-service
+    environment:
+      DATABASE_URL: postgresql+psycopg2://postgres:postgres@postgres:5432/cinebook
+      JAVA_BACKEND_URL: http://backend:8080
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      AI_INTERNAL_API_KEY: ${AI_INTERNAL_API_KEY:-cinebook-internal-secret-key-change-in-production}
+      ENVIRONMENT: development
+      LOG_LEVEL: INFO
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - cinebook-network
+    restart: unless-stopped
+
   backend:
-    build: ./cinebook-backend
+    build:
+      context: ./cinebook-backend
+      dockerfile: Dockerfile
+    container_name: cinebook-backend
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/cinebook
       REDIS_HOST: redis
-    depends_on: [postgres, redis]
-    ports: ["8080:8080"]
+      AI_SERVICE_URL: http://ai-service:8000
+      AI_INTERNAL_API_KEY: ${AI_INTERNAL_API_KEY:-cinebook-internal-secret-key-change-in-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      ai-service:
+        condition: service_started
+    ports:
+      - "8080:8080"
+    networks:
+      - cinebook-network
+
   frontend:
-    build: ./cinebook-frontend
-    ports: ["3000:80"]
-    depends_on: [backend]
+    build:
+      context: ./cinebook-frontend
+      dockerfile: Dockerfile
+    container_name: cinebook-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - cinebook-network
+
+volumes:
+  postgres_data:
+
+networks:
+  cinebook-network:
+    driver: bridge

@@ -48,3 +48,9 @@ app:
   seat-lock:
     duration-minutes: 10
   frontend-url: http://localhost:5173
+
+cinebook:
+  ai-service:
+    url: http://localhost:8000
+    timeout-ms: 1000
+    api-key: test-internal-key

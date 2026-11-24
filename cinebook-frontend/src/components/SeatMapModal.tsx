@@ -5,17 +5,25 @@ import {
   AlertCircle,
   User as UserIcon,
   LogIn,
+  Eye,
+  Utensils,
+  Users,
+  Sparkles,
 } from 'lucide-react';
-import { Show, ShowSeat, Booking } from '../types';
+import { Show, ShowSeat, Booking, SnackOrderItem, GroupBookingSession } from '../types';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { PaymentModal } from './PaymentModal';
+import { SeatSightlinePreview } from './seatmap/SeatSightlinePreview';
+import { IntervalExpressModal } from './booking/IntervalExpressModal';
+import { GroupBookingModal } from './booking/GroupBookingModal';
 
 interface SeatMapModalProps {
   show: Show;
   onClose: () => void;
   onSuccess: (booking: Booking) => void;
   onOpenAuth: () => void;
+  onOpenGroupSession?: (session: GroupBookingSession) => void;
 }
 
 export const SeatMapModal: React.FC<SeatMapModalProps> = ({
@@ -23,6 +31,7 @@ export const SeatMapModal: React.FC<SeatMapModalProps> = ({
   onClose,
   onSuccess,
   onOpenAuth,
+  onOpenGroupSession,
 }) => {
   const { user } = useAuth();
   const [seats, setSeats] = useState<ShowSeat[]>([]);
@@ -34,6 +43,14 @@ export const SeatMapModal: React.FC<SeatMapModalProps> = ({
   const [guestName, setGuestName] = useState('');
   const [guestEmail, setGuestEmail] = useState('');
   const [pendingBooking, setPendingBooking] = useState<Booking | null>(null);
+
+  // New Innovative Features State
+  const [hoveredSeat, setHoveredSeat] = useState<ShowSeat | null>(null);
+  const [showSightline, setShowSightline] = useState<boolean>(true);
+  const [selectedSnacks, setSelectedSnacks] = useState<SnackOrderItem[]>([]);
+  const [showSnackModal, setShowSnackModal] = useState<boolean>(false);
+  const [activeGroupSession, setActiveGroupSession] = useState<GroupBookingSession | null>(null);
+
 
   // Generate dynamic seat map if backend returns empty or 404
   const generateDynamicSeats = (currentShow: Show): ShowSeat[] => {
@@ -115,7 +132,51 @@ export const SeatMapModal: React.FC<SeatMapModalProps> = ({
   const subtotalPaise = selectedSeats.reduce((sum, s) => sum + s.price, 0);
   const convenienceFeePaise = Math.round(subtotalPaise * 0.025);
   const gstPaise = Math.round(subtotalPaise * 0.18);
-  const totalAmountPaise = subtotalPaise + convenienceFeePaise + gstPaise;
+  const snacksTotalPaise = selectedSnacks.reduce(
+    (sum, it) => sum + it.snack.pricePaise * it.quantity,
+    0
+  );
+  const totalAmountPaise = subtotalPaise + convenienceFeePaise + gstPaise + snacksTotalPaise;
+
+  const handleStartGroupBooking = () => {
+    if (selectedSeats.length < 2) {
+      setError('Please select at least 2 seats to initiate a Split & Hold Group Cart');
+      return;
+    }
+    const groupId =
+      'GRP-' +
+      Math.random().toString(36).substring(2, 6).toUpperCase() +
+      '-' +
+      Date.now().toString(36).substring(4, 8).toUpperCase();
+
+    const session: GroupBookingSession = {
+      groupId,
+      show,
+      organizerName: user?.fullName || guestName || 'Organizer (You)',
+      organizerEmail: user?.email || guestEmail || 'organizer@example.com',
+      seats: selectedSeats.map((s, idx) => ({
+        seatId: s.id,
+        seatLabel: `${s.seat.rowLabel}${s.seat.seatNumber}`,
+        pricePaise: s.price,
+        claimedBy: idx === 0 ? (user?.fullName || guestName || 'Organizer (You)') : undefined,
+        claimedEmail: idx === 0 ? (user?.email || guestEmail) : undefined,
+        isPaid: idx === 0, // organizer pre-claims first seat
+        paidAt: idx === 0 ? new Date().toISOString() : undefined,
+      })),
+      expiresAt: Date.now() + 10 * 60 * 1000,
+      status: 'PENDING',
+      createdAt: Date.now(),
+    };
+
+    try {
+      localStorage.setItem(`cinebook_group_${groupId}`, JSON.stringify(session));
+    } catch {}
+
+    setActiveGroupSession(session);
+    if (onOpenGroupSession) {
+      onOpenGroupSession(session);
+    }
+  };
 
   const handleProceedToPayment = async () => {
     if (selectedSeatIds.length === 0) {
@@ -268,6 +329,74 @@ export const SeatMapModal: React.FC<SeatMapModalProps> = ({
             <span className="screen-text">Screen This Way</span>
           </div>
 
+          {/* Innovative Feature Toggles (Sightline Simulator & Interval Express) */}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '1rem',
+              flexWrap: 'wrap',
+              gap: 8,
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setShowSightline(!showSightline)}
+              style={{
+                background: showSightline ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255,255,255,0.06)',
+                border: showSightline ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '20px',
+                padding: '6px 14px',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                color: showSightline ? '#f87171' : '#9ca3af',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                transition: 'all 0.2s',
+              }}
+            >
+              <Eye size={15} /> 3D Sightline Simulator: {showSightline ? 'ACTIVE' : 'OFF'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowSnackModal(true)}
+              style={{
+                background: selectedSnacks.length > 0 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255,255,255,0.06)',
+                border: selectedSnacks.length > 0 ? '1px solid #10b981' : '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '20px',
+                padding: '6px 14px',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                color: selectedSnacks.length > 0 ? '#34d399' : '#d1d5db',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                transition: 'all 0.2s',
+              }}
+            >
+              <Utensils size={15} />
+              {selectedSnacks.length > 0
+                ? `🍿 Snacks Added (₹${(snacksTotalPaise / 100).toFixed(0)})`
+                : '🍿 Add Interval Express Snacks'}
+            </button>
+          </div>
+
+          {/* 3D Sightline Preview Box */}
+          {showSightline && (
+            <div style={{ marginBottom: '1.25rem' }}>
+              <SeatSightlinePreview
+                rowLabel={hoveredSeat?.seat.rowLabel || selectedSeats[0]?.seat.rowLabel || 'C'}
+                seatNumber={hoveredSeat?.seat.seatNumber || selectedSeats[0]?.seat.seatNumber || 4}
+                movieTitle={show.movie.title}
+              />
+            </div>
+          )}
+
           {/* Seat Grid */}
           {loading ? (
             <div
@@ -296,7 +425,8 @@ export const SeatMapModal: React.FC<SeatMapModalProps> = ({
                           key={seat.id}
                           className={className}
                           onClick={() => toggleSeatSelection(seat)}
-                          title={`${seat.seat.rowLabel}${seat.seat.seatNumber} — ₹${(seat.price / 100).toFixed(0)} (${seat.seat.seatType})`}
+                          onMouseEnter={() => setHoveredSeat(seat)}
+                          title={`${seat.seat.rowLabel}${seat.seat.seatNumber} — ₹${(seat.price / 100).toFixed(0)} (${seat.seat.seatType}) • Hover for 3D Sightline`}
                         >
                           {seat.seat.seatNumber}
                         </div>
@@ -444,27 +574,80 @@ export const SeatMapModal: React.FC<SeatMapModalProps> = ({
               </div>
             </div>
 
-            <button
-              className="btn btn-primary"
-              disabled={selectedSeatIds.length === 0 || holding}
-              onClick={handleProceedToPayment}
-              style={{
-                padding: '10px 24px',
-                fontSize: '0.95rem',
-                fontWeight: 800,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-              }}
-            >
-              <CreditCard size={18} />
-              {holding
-                ? 'Securing Seats...'
-                : `Proceed to Pay (₹${(totalAmountPaise / 100).toFixed(0)})`}
-            </button>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              {selectedSeatIds.length >= 2 && (
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={handleStartGroupBooking}
+                  style={{
+                    background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+                    border: 'none',
+                    color: '#fff',
+                    padding: '10px 18px',
+                    fontSize: '0.9rem',
+                    fontWeight: 800,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 15px rgba(59, 130, 246, 0.4)',
+                  }}
+                >
+                  <Users size={16} /> Split & Hold ({selectedSeatIds.length})
+                </button>
+              )}
+
+              <button
+                className="btn btn-primary"
+                disabled={selectedSeatIds.length === 0 || holding}
+                onClick={handleProceedToPayment}
+                style={{
+                  padding: '10px 24px',
+                  fontSize: '0.95rem',
+                  fontWeight: 800,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+              >
+                <CreditCard size={18} />
+                {holding
+                  ? 'Securing Seats...'
+                  : `Proceed to Pay (₹${(totalAmountPaise / 100).toFixed(0)})`}
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Interval Express Snacks Modal */}
+      {showSnackModal && (
+        <IntervalExpressModal
+          seatsSummary={selectedSeats.map((s) => s.seat.rowLabel + s.seat.seatNumber).join(', ') || 'Selected Seats'}
+          movieTitle={show.movie.title}
+          initialSelected={selectedSnacks}
+          onClose={() => setShowSnackModal(false)}
+          onConfirmSnacks={(items) => {
+            setSelectedSnacks(items);
+            setShowSnackModal(false);
+          }}
+        />
+      )}
+
+      {/* Group Booking Split & Hold Modal */}
+      {activeGroupSession && (
+        <GroupBookingModal
+          session={activeGroupSession}
+          onClose={() => setActiveGroupSession(null)}
+          onUpdateSession={(updated) => setActiveGroupSession(updated)}
+          onCompleteBooking={(finalized) => {
+            setActiveGroupSession(null);
+            onSuccess(finalized);
+            onClose();
+          }}
+        />
+      )}
 
       {/* Payment Gateway Modal */}
       {pendingBooking && (
@@ -481,3 +664,4 @@ export const SeatMapModal: React.FC<SeatMapModalProps> = ({
     </>
   );
 };
+

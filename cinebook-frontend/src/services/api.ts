@@ -7,6 +7,7 @@ import {
   Show,
   ShowSeat,
   Theater,
+  AiChatResponse,
 } from '../types';
 import { FALLBACK_MOVIES } from './fallbackMovies';
 
@@ -324,7 +325,7 @@ export const api = {
     return handleResponse<boolean>(res);
   },
 
-  // Spring AI Recommendations
+  // Spring AI Recommendations (Legacy)
   async getAiRecommendations(query: string): Promise<string> {
     const res = await fetch(
       `${API_BASE}/ai/recommend?query=${encodeURIComponent(query)}`,
@@ -334,6 +335,71 @@ export const api = {
       }
     );
     return handleResponse<string>(res);
+  },
+
+  // ===== CineBook Agentic AI Platform APIs =====
+  async searchAiMovies(query: string, genre?: string, limit: number = 10): Promise<any> {
+    const res = await fetch(`${API_BASE}/ai/search`, {
+      method: 'POST',
+      headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, genre, limit, hybrid: true }),
+    });
+    return handleResponse<any>(res);
+  },
+
+  async sendAiChat(message: string, sessionId?: string): Promise<AiChatResponse> {
+    const res = await fetch(`${API_BASE}/ai/chat`, {
+      method: 'POST',
+      headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, sessionId }),
+    });
+    return handleResponse<AiChatResponse>(res);
+  },
+
+  async sendAiChatMessage(params: {
+    message: string;
+    sessionId?: string;
+    userId?: string;
+  }): Promise<{
+    sessionId: string;
+    reply: string;
+    toolCalls: any[];
+    recommendedMovies: any[];
+  }> {
+    const res = await fetch(`${API_BASE}/ai/chat`, {
+      method: 'POST',
+      headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    });
+    const data = await handleResponse<AiChatResponse>(res);
+    return {
+      sessionId: data.sessionId,
+      reply: data.content,
+      toolCalls: data.toolCalls || [],
+      recommendedMovies: data.recommendedMovies || [],
+    };
+  },
+
+  async getAiUserRecommendations(userId: string, limit: number = 5): Promise<any> {
+    const res = await fetch(`${API_BASE}/ai/recommendations/${userId}?limit=${limit}`, {
+      headers: getHeaders(),
+    });
+    return handleResponse<any>(res);
+  },
+
+  async submitAiFeedback(data: {
+    movieId: string;
+    feedbackType: string;
+    recommendationEventId?: string;
+    rating?: number;
+    comment?: string;
+  }): Promise<any> {
+    const res = await fetch(`${API_BASE}/ai/feedback`, {
+      method: 'POST',
+      headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return handleResponse<any>(res);
   },
 
   // TMDB Import (Admin)

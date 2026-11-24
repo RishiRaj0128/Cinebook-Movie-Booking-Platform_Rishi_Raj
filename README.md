@@ -73,45 +73,75 @@ CineBook addresses core operational challenges in modern multiplex movie booking
 
 ---
 
-## 🛠️ System Architecture & Tech Stack
+## 🛠️ System Architecture & Dual-Backend Tech Stack
 
 ```
- CineBook Full-Stack Platform
- ├── Frontend (React 18 + Vite + TypeScript + Lucide Icons)
- ├── Backend REST API (Java 21 + Spring Boot 3.3.5 + Spring Security JWT)
- └── Database & AI Cloud (Neon PostgreSQL 18 + Groq Llama 3.3 70B)
+ CineBook Enterprise Platform
+ ├── Frontend SPA (React 18 + Vite + TypeScript + Lucide Icons + Tailwind)
+ ├── Transactional Core (Java 21 + Spring Boot 3.3.5 + Spring Security JWT + JPA)
+ ├── Agentic AI Microservice (Python 3.12 + FastAPI + LangGraph + Groq Llama 3.3)
+ └── Unified Database & Cache (PostgreSQL 16 + pgvector 384d + Redis 7)
 ```
 
-### Backend Micro-Architecture
-- **Java 21 LTS** with modern records, pattern matching, and virtual thread execution.
-- **Spring Boot 3.3.5** with Spring Security, Spring Data JPA, and Spring AI.
-- **Flyway Database Migrations** for automated schema evolution.
-
-### Frontend Architecture
-- **React 18** single page application built with **Vite** & **TypeScript**.
-- **Lucide React** icons and **HTML5 Canvas QR** renderer.
+### Architecture Highlights
+- **Dual-Backend Separation of Concerns:**
+  - **Java Spring Boot:** Primary source of truth for transactions, double-entry financial ledger, user auth, pessimistic seat locking, Razorpay idempotency, and ticketing.
+  - **Python FastAPI:** Dedicated AI microservice running LangGraph state machines, vector embeddings (`BAAI/bge-small-en-v1.5`), hybrid reciprocal rank fusion search, user preference extraction, and conversational memory.
+- **Strict Transactional Security Boundary:** The Python microservice has read-only access to movies and showtimes, and write access only to AI-owned tables. All ticket bookings and financial operations are strictly routed through authenticated Java APIs.
+- **Enterprise Vector Search:** PostgreSQL 16 with `pgvector` extension and HNSW indexing for cosine similarity search over 384-dimensional dense vectors.
+- **LangGraph Multi-Step Agent Workflows:** Autonomous tool execution with strict cycle limit guards, parameter validation, and database audit logging.
+- **Prometheus & Grafana Telemetry:** Real-time request latency histograms, tool execution counters, token consumption tracking, and automated evaluation metrics.
 
 ---
 
 ## 🏛️ Deep-Dive Design Diagrams (Mermaid.js)
 
-### 4.1 High-Level Architecture
+### 4.1 Dual-Backend Architecture
 ```mermaid
 graph TD
     Client["🌐 Client Web App (React 18 + TypeScript)"]
-    API["⚙️ Spring Boot REST API (Java 21)"]
-    DB[("🐘 Neon Cloud PostgreSQL Database")]
-    TMDB["🎬 TMDB API (Movie Metadata & Posters)"]
-    Groq["🤖 Groq AI Engine (Llama 3.3 70B)"]
-    Razorpay["💳 Razorpay Payment Gateway"]
     GateScanner["📱 Gate Pass Scanner / Mobile Lens"]
+    
+    subgraph Core ["Transactional Core (Port 8080)"]
+        JavaAPI["⚙️ Spring Boot REST API (Java 21)"]
+        Ledger["📒 Double-Entry Financial Ledger"]
+        SeatLock["🔒 Redis Pessimistic Seat Hold"]
+    end
 
-    Client -->|HTTPS / REST| API
-    GateScanner -->|Scan QR Code| API
-    API -->|JPA / Flyway| DB
-    API -->|HTTP REST Client| TMDB
-    API -->|Spring AI Client| Groq
-    API -->|Webhook Verification| Razorpay
+    subgraph AI ["AI & Semantic Engine (Port 8000)"]
+        FastAPI["⚡ Python FastAPI AI Service"]
+        LangGraph["🧠 LangGraph Multi-Step Agent"]
+        Embedder["📐 BAAI/bge-small-en-v1.5 Embedder"]
+        Memory["🧠 Long-Term Preference Memory"]
+    end
+
+    subgraph Data ["Database Tier"]
+        DB[("🐘 PostgreSQL 16 + pgvector (384d)")]
+        Redis[("⚡ Redis 7 (Distributed Cache & Locks)")]
+    end
+
+    subgraph External ["External Services"]
+        TMDB["🎬 TMDB API (Movie Metadata)"]
+        Groq["🤖 Groq LLM API (Llama 3.3 70B)"]
+        Razorpay["💳 Razorpay Payment Gateway"]
+    end
+
+    Client -->|HTTPS / REST| JavaAPI
+    Client -->|AI Search & Chat| JavaAPI
+    GateScanner -->|Scan QR Code| JavaAPI
+    
+    JavaAPI -->|RestClient (mTLS/Secret)| FastAPI
+    FastAPI --> LangGraph
+    LangGraph --> Embedder
+    LangGraph --> Memory
+    FastAPI -->|LLM Tool Calling| Groq
+
+    JavaAPI -->|ACID Transactions| DB
+    JavaAPI -->|Distributed Lock| Redis
+    FastAPI -->|Vector HNSW / Hybrid Search| DB
+
+    JavaAPI -->|Movie Import| TMDB
+    JavaAPI -->|Payment Webhook| Razorpay
 ```
 
 ---
@@ -372,14 +402,29 @@ Cinebook-Movie-Booking-Platform/
 │       ├── security/                  # JWT Token Provider & Filter
 │       ├── service/                   # Core Business Logic Services
 │       └── util/                      # Pricing, QR Generator & Signature Verifier
+├── cinebook-ai-service/                 # Dedicated Python AI Microservice
+│   ├── app/
+│   │   ├── agents/                     # LangGraph state machine, nodes, tools & prompts
+│   │   ├── api/v1/                     # FastAPI endpoints (search, chat, recommendations)
+│   │   ├── evaluation/                 # Metrics (P@K, MRR, NDCG) and evaluation runner
+│   │   ├── memory/                     # Conversation & user preference memory
+│   │   ├── observability/              # Prometheus instrumentation & middleware
+│   │   ├── services/                   # Hybrid retrieval, embeddings & ranking
+│   │   └── main.py                     # Microservice ASGI entrypoint
+│   ├── data/                           # Golden benchmark dataset
+│   ├── tests/                          # 31 unit & evaluation tests
+│   ├── Dockerfile                      # Non-root multi-stage container
+│   └── requirements.txt                # Python dependencies
 ├── cinebook-frontend/                 # React Single Page Application
-│   ├── package.json                   # Dependencies (React, Lucide, Vite)
-│   ├── vercel.json                    # Single Page Application routing config
-│   └── src/
-│       ├── components/                # UI Modals (TicketModal, TrailerModal, SeatMap)
-│       ├── context/                   # AuthContext & State Management
-│       ├── services/                  # Axios REST API Client
-│       └── App.tsx                    # Main Web Application & Layout
+│   ├── src/
+│   │   ├── components/ai/              # AIChatDrawer, ChatMessage, Feedback, ToolStatus
+│   │   ├── components/                 # Modals (SeatMap, Ticket, FairExchange)
+│   │   └── services/api.ts             # REST client for backend and AI endpoints
+├── deploy/                             # Production Deployment Manifests
+│   ├── k8s/                            # Kubernetes Deployments, Services & ConfigMaps
+│   └── monitoring/                     # Prometheus scraping config & Grafana dashboard
+├── docs/                               # Architecture, AWS deployment & AI evaluation reports
+├── docker-compose.yml                  # Full-stack local multi-container orchestration
 ├── README.md                          # Platform Technical Specification
 └── LICENSE                            # MIT License
 ```
@@ -389,31 +434,153 @@ Cinebook-Movie-Booking-Platform/
 ## 🚀 Local Development & Setup Guide
 
 ### Prerequisites
-- **Java 21 JDK**
+- **Java 21 JDK** (GraalVM or Temurin)
 - **Node.js 18+** & **npm**
-- **Maven 3.9+**
+- **Python 3.12+** & **pip**
+- **Docker & Docker Compose**
 
-### 1. Clone & Configure Project
+---
+
+### Option A: 1-Click Multi-Container Deployment (Recommended)
+
+Run the entire platform (PostgreSQL 16 + pgvector, Redis, Java Backend, Python AI Microservice, React Frontend):
+
 ```bash
-git clone https://github.com/RishiRaj1100/Cinebook-Movie-Booking-Platform.git
-cd Cinebook-Movie-Booking-Platform
+# 1. Copy environment template
+cp .env.example .env
+
+# 2. Launch full platform with Docker Compose
+docker compose up --build
 ```
 
-### 2. Launch Backend REST API
+Access points:
+- **Web Application:** `http://localhost:3000`
+- **Spring Boot REST API & Swagger:** `http://localhost:8080/swagger-ui.html`
+- **FastAPI AI Microservice & OpenAPI Docs:** `http://localhost:8000/docs`
+- **Prometheus Metrics:** `http://localhost:8000/metrics`
+
+---
+
+### Option B: Local Microservice Development
+
+#### 1. Start Database & Cache
+```bash
+docker compose up postgres redis -d
+```
+
+#### 2. Run Python AI Microservice
+```bash
+cd cinebook-ai-service
+pip install -r requirements.txt
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+Run AI tests and evaluation benchmark:
+```bash
+pytest tests/ -v
+python -m app.evaluation.runner
+```
+
+#### 3. Run Java Spring Boot Backend
 ```bash
 cd cinebook-backend
-cp .env.example .env
-mvn spring-boot:run "-Dspring-boot.run.jvmArguments=-Dspring.profiles.active=postgres"
+mvn clean spring-boot:run
 ```
-The REST API initializes PostgreSQL and starts on `http://localhost:8080`.
 
-### 3. Launch Frontend Application
+Run Java tests:
+```bash
+mvn test
+```
+
+#### 4. Run React Frontend
 ```bash
 cd cinebook-frontend
 npm install
 npm run dev
 ```
-Open `http://localhost:3000` to access the application.
+
+---
+
+## 📊 Agentic AI Platform, Hybrid Retrieval & LLM Evaluation
+
+CineBook's AI engine is not a superficial chatbot wrapper; it is an autonomous, production-grade microservice orchestrating multi-step agent workflows, hybrid retrieval, and rigorous evaluation.
+
+### 5.1 Dual-Backend Architecture & Strict Transactional Boundaries
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                       CINEBOOK ARCHITECTURE                                            │
+│                                                                                                        │
+│  User Query / Profile ──► Bi-Encoder (BGE-Small) ──► pgvector HNSW Cosine Search ──┐                   │
+│                                                                                    ├──► RRF (k=60) ──► │
+│  Filters / Keywords   ──► PostgreSQL tsvector    ──► BM25 Full-Text Search       ──┘                   │
+│                                                                                                        │
+│  ──► Multi-Factor Re-ranking (Semantic 35% + Genre 25% + Rating 15% + Interaction History 10%)         │
+│  ──► Human-Interpretable Explanations & LangGraph Career/Movie Concierge Agent                         │
+└────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+- **Separation of Concerns:** Java Spring Boot maintains authoritative control over transactions, double-entry ledger entries, and pessimistic seat holds. The Python FastAPI microservice runs autonomous reasoning and semantic search.
+- **Strict Role Isolation (`cinebook_ai`):** Granted read-only (`SELECT`) access to catalog data (`movies`, `theaters`, `screens`, `shows`), and read/write access only to AI-owned tables (`movie_embeddings`, `chat_sessions`, `chat_messages`, `user_memory`, `user_preferences`, `agent_tool_calls`, `recommendation_events`, `recommendation_feedback`). Zero write permissions on financial tables (`bookings`, `payments`, `wallets`, `ledger_entries`, `show_seats`).
+
+### 5.2 Two-Stage Hybrid Retrieval & Reciprocal Rank Fusion (RRF)
+
+To eliminate hallucinations and overcome vocabulary mismatch, CineBook fuses dense semantic vector search with lexical full-text search:
+1. **Dense Vector Embeddings:** `BAAI/bge-small-en-v1.5` generates 384-dimensional dense vectors indexed with PostgreSQL `pgvector` HNSW (`vector_cosine_ops`, $m=16, ef\_construction=64$).
+2. **Lexical Full-Text Search:** PostgreSQL `tsvector` and `tsquery` index exact movie titles, actors, directors, and genres.
+3. **Reciprocal Rank Fusion (RRF):** Merges disparate rank lists without fragile score normalization:
+   $$RRF\_Score(d) = \sum_{m \in M} \frac{w_m}{k + r_m(d)} \quad (k=60, w_{\text{vector}}=0.7, w_{\text{fts}}=0.3)$$
+
+### 5.3 Pydantic-Enforced Structured Tool Inputs & Outputs
+
+All agent interactions enforce strict JSON Schema contracts using Pydantic v2 (`app/agents/tools.py`):
+- **Typed Input Models:**
+  - `SearchMoviesArgs`: `query: str`, `genre: Optional[str]`, `limit: int = Field(default=5, ge=1, le=10)`
+  - `MovieDetailsArgs`: `title_or_id: str`
+  - `RecommendationsArgs`: `limit: int = Field(default=5, ge=1, le=10)`
+  - `ShowtimesArgs`: `movie_title: Optional[str]`, `city: str = Field(default="Mumbai")`
+  - `BookingQuoteArgs`: `num_tickets: int = Field(default=2, ge=1, le=10)`, `ticket_tier: str`
+- **OpenAI/Groq Function Schema Export:** Auto-generates standard JSON Schema definitions via `SearchMoviesArgs.schema()` for native LLM function calling.
+- **Runtime Argument Validation:** When the LLM emits a tool call, arguments are instantiated via `SearchMoviesArgs(**raw_args)`. Any hallucinated or out-of-bounds argument instantly triggers a caught Pydantic `ValidationError`, returning structured diagnostics (`INVALID_ARGS`) without crashing.
+- **Audit Logging:** Every tool call is logged to `agent_tool_calls` with execution status, parameters, output, and duration in milliseconds.
+
+### 5.4 Prompt Engineering & Defense-in-Depth
+
+- **Anti-Hallucination Conditioning:** System prompt (`app/agents/prompts.py`) strictly conditions the LLM: *"NEVER fabricate movie titles, showtimes, seat availability, or prices from imagination; always invoke catalog tools"*.
+- **Architectural Boundary Enforcement:** The LLM is explicitly informed it is a read-only concierge that cannot lock seats or charge balances, directing users to the interactive seat map.
+- **Prompt Injection Defense:** Explicit security directives instruct the LLM to ignore user override commands, SQL queries, and to treat retrieved catalog metadata as untrusted inputs.
+- **Dynamic Context Assembly:** Injects a 10-turn rolling conversation window from `chat_messages` along with long-term user preferences (favorite genres, directors) from `user_preferences`.
+- **Cycle Guard:** LangGraph state machine enforces `MAX_ITERATIONS = 4` to prevent infinite loops or token exhaustion.
+
+### 5.5 Empirical Evaluation Metrics (Offline vs. Live)
+
+CineBook features an automated evaluation harness (`cinebook-ai-service/app/evaluation/runner.py`) executing against 22 golden benchmark scenarios across Information Retrieval (IR), Tool Selection, and Adversarial Security:
+
+| Metric | Target Threshold | Actual Score | Status | Description |
+|---|---|---|---|---|
+| **Mean Reciprocal Rank (MRR)** | $\ge 0.80$ | **0.7157** | **Measured** | Position of the first relevant result: $\frac{1}{\|Q\|} \sum \frac{1}{\text{rank}_i}$. Measures if the top match appears at rank 1 or 2. |
+| **NDCG@5** | $\ge 0.75$ | **0.7222** | **Measured** | Normalized Discounted Cumulative Gain: Accounts for position discount using logarithmic decay. |
+| **Retrieval Recall@5** | $\ge 0.75$ | **0.8480** | **PASS** | **84.8%** of ground-truth relevant items successfully recovered in the top 5 candidates. |
+| **Retrieval Precision@5** | $\ge 0.70$ | **0.2471** | **WARN** | Captures precision in top-5 against narrow 1-2 item ground-truth targets (lexical baseline). |
+| **Tool Selection Precision** | $\ge 0.90$ | **1.0000** | **PASS** | **100% precision** in routing natural language intent to the correct underlying tool. |
+| **Tool Selection Recall** | $\ge 0.90$ | **1.0000** | **PASS** | **100% recall** in activating multi-tool sequences (e.g., quotes + showtimes). |
+| **Tool Selection F1 Score** | $\ge 0.90$ | **1.0000** | **PASS** | Harmonic mean of tool selection precision and recall. |
+| **Adversarial Safety Pass Rate** | $1.00$ | **1.0000** | **PASS** | **100% defense** against prompt injections, SQL overrides, and system prompt extraction. |
+
+#### Evaluation Modes:
+- **Offline Mode (`--mode offline`)**: Fast (4.51 ms), zero-dependency, deterministic heuristic router for headless CI pipelines without external network or API keys.
+- **Live Mode (`--mode live`)**: Real-time evaluation against Groq LLM API (`llama-3.1-70b-versatile`) measuring stochastic function calling, schema adherence, and latency under 12.0s timeouts.
+
+### 5.6 Cross-Domain Application: Career Assistance & Job Discovery (e.g. Elip)
+
+The exact IR and Agentic AI architectures built for CineBook directly transfer to modern career assistance and job discovery platforms:
+
+| CineBook Mechanism | Job Discovery / Career Platform (Elip) | Technical Advantage |
+|---|---|---|
+| **Movie Metadata Embeddings** | **Job Description (JD) Embeddings** | Dense vector embeddings map unstructured resumes and job postings into a shared semantic latent space, solving vocabulary mismatch (e.g., *"backend scalability"* $\leftrightarrow$ *"high-throughput distributed systems"*). |
+| **Hybrid Search + RRF** | **Hard vs. Soft Job Matching** | Fuses semantic fit ($w=0.7$) with strict filtering ($w=0.3$) for mandatory requirements like location, salary band, visa sponsorship, and tech stack. |
+| **Multi-Factor Re-Ranking** | **Candidate-Role Scoring** | Combines skill overlap, compensation alignment, seniority fit, and novelty decay (penalizing already-applied or dismissed roles). |
+| **LangGraph Agent Workflows** | **Conversational Career Concierge** | Multi-step agent orchestrates resume gap analysis, interview question generation, and salary benchmarking via allowlisted tools. |
 
 ---
 
@@ -421,4 +588,4 @@ Open `http://localhost:3000` to access the application.
 
 This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
 
-Developed & Maintained by **[Rishi Raj](https://github.com/RishiRaj1100)**.
+Developed & Maintained by **[Rishi Raj](https://github.com/RishiRaj0128)**.

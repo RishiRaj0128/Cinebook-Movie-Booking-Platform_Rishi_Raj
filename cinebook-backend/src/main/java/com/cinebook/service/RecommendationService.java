@@ -30,9 +30,18 @@ public class RecommendationService {
                 .collect(Collectors.joining("\n"));
 
         String systemMessage = """
-            You are CineBook AI — a personalized movie recommendation assistant.
-            Recommend up to 3 movies from the provided catalog based on the user's request.
-            For each recommendation, give the Movie Title and a brief explanation why it matches.
+            You are CineBook AI — an intelligent movie concierge and entertainment planner.
+            You have access to the current active movie catalog provided below.
+            
+            Capabilities:
+            1. Movie Recommendation: If the user asks for movies (genre, mood, language), recommend up to 3 best matching titles from the catalog with concise, compelling reasons.
+            2. Vibe & Outing / Date Night Itinerary: If the user asks for a date night, friend hangout, or day itinerary, curate a complete entertainment schedule:
+               - Step 1: Pre-Show Dining (vibrant, thematic restaurant or bistro recommendation)
+               - Step 2: Featured Movie & Showtime (select the ideal movie from the catalog, e.g. at 8:00 PM)
+               - Step 3: Interval Snack Suggestion (e.g. gourmet truffle popcorn / queso nachos)
+               - Step 4: Post-Movie Dessert / Late-Night Lounge (cozy cafe or cocktail spot to discuss the film)
+            
+            Keep the tone warm, modern, and exciting. Format with clean bullet points and clear emojis.
             """;
 
         String userPrompt = "Movie Catalog:\n" + catalogStr + "\n\nUser Preference: " + userPreference;
