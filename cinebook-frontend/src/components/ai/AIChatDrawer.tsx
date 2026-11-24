@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Send, Sparkles, Trash2, Bot, Film } from 'lucide-react';
+import { X, Send, Sparkles, Trash2, Bot } from 'lucide-react';
 import { AiChatMessage } from '../../types';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';

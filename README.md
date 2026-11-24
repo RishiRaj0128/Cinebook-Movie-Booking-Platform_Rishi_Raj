@@ -19,34 +19,40 @@ Built with a **Spring Boot 3 (Java 21)** REST backend, **Neon Cloud PostgreSQL**
 ---
 
 ## 📋 Table of Contents
-1. [Executive Summary](#-executive-summary)
-2. [Key Capabilities & Features](#-key-capabilities--features)
-3. [System Architecture & Tech Stack](#-system-architecture--tech-stack)
-4. [Deep-Dive Design Diagrams (Mermaid.js)](#-deep-dive-design-diagrams-mermaidjs)
-   - [4.1 High-Level Architecture](#41-high-level-architecture)
+1. [Executive Summary](#executive-summary)
+2. [Key Capabilities & Features](#key-capabilities--features)
+3. [System Architecture & Dual-Backend Tech Stack](#system-architecture--dual-backend-tech-stack)
+4. [Deep-Dive Design Diagrams (Mermaid.js)](#deep-dive-design-diagrams-mermaidjs)
+   - [4.1 Dual-Backend Architecture](#41-dual-backend-architecture)
    - [4.2 Entity-Relationship (ER) Schema](#42-entity-relationship-er-schema)
    - [4.3 Booking & Gate Verification Sequence](#43-booking--gate-verification-sequence)
    - [4.4 Seat Lock Lifecycle State Machine](#44-seat-lock-lifecycle-state-machine)
-5. [Core Business Logic & Algorithms](#-core-business-logic--algorithms)
+5. [Core Business Logic & Algorithms](#core-business-logic--algorithms)
    - [5.1 Real-Time Seat Hold & Concurrency Control](#51-real-time-seat-hold--concurrency-control)
    - [5.2 Dynamic Tiered Pricing Model](#52-dynamic-tiered-pricing-model)
    - [5.3 Universal QR Gate Pass Engine](#53-universal-qr-gate-pass-engine)
-   - [5.4 TMDB Indian Regional Cinema Sync](#54-tmdb-indian-regional-cinema-sync)
-6. [Financial Transaction & Payment Engineering (Enterprise Deep Dive)](#-financial-transaction--payment-engineering-enterprise-deep-dive)
+6. [Financial Transaction & Payment Engineering (Enterprise Deep Dive)](#financial-transaction--payment-engineering-enterprise-deep-dive)
    - [6.1 Functional Domain Modeling & Rule Engine](#61-functional-domain-modeling--rule-engine)
-   - [6.2 Cryptographic Idempotency](#62-cryptographic-idempotency)
+   - [6.2 Cryptographic Idempotency & Distributed Claim State Machine](#62-cryptographic-idempotency--distributed-claim-state-machine)
    - [6.3 Concurrency Control & Deadlock-Free Ordering](#63-concurrency-control--deadlock-free-ordering)
    - [6.4 Double-Entry Append-Only Ledger](#64-double-entry-append-only-ledger)
    - [6.5 Strict Finite State Machine](#65-strict-finite-state-machine)
    - [6.6 Smallest Integer Currency Discipline (Paise)](#66-smallest-integer-currency-discipline-paise)
-   - [6.7 Saga Pattern & Distributed Compensation](#67-saga-pattern--distributed-compensation)
+   - [6.7 Saga Pattern & Distributed Compensation](#67-saga-pattern--distributed-compensation-4-step-end-to-end-orchestration)
    - [6.8 Webhook Ingestion & Replay Deduplication](#68-webhook-ingestion--replay-deduplication)
    - [6.9 Induced Failure Recovery & Post-Mortem Log](#69-induced-failure-recovery--post-mortem-log)
-7. [REST API Documentation](#-rest-api-documentation)
-8. [Security & Authentication Model](#-security--authentication-model)
-9. [Repository Directory Structure](#-repository-directory-structure)
-10. [Local Development & Setup Guide](#-local-development--setup-guide)
-11. [License & Maintainers](#-license--maintainers)
+7. [Agentic AI Platform, Hybrid Retrieval & LLM Evaluation](#agentic-ai-platform-hybrid-retrieval--llm-evaluation)
+   - [7.1 Dual-Backend Architecture & Strict Transactional Boundaries](#71-dual-backend-architecture--strict-transactional-boundaries)
+   - [7.2 Two-Stage Hybrid Retrieval & Reciprocal Rank Fusion (RRF)](#72-two-stage-hybrid-retrieval--reciprocal-rank-fusion-rrf)
+   - [7.3 Pydantic-Enforced Structured Tool Inputs & Outputs](#73-pydantic-enforced-structured-tool-inputs--outputs)
+   - [7.4 Prompt Engineering & Defense-in-Depth](#74-prompt-engineering--defense-in-depth)
+   - [7.5 Empirical Evaluation Metrics (Offline vs. Live)](#75-empirical-evaluation-metrics-offline-vs-live)
+   - [7.6 Cross-Domain Application: Career Assistance & Job Discovery](#76-cross-domain-application-career-assistance--job-discovery-eg-elip)
+8. [REST API Documentation](#rest-api-documentation)
+9. [Security & Authentication Model](#security--authentication-model)
+10. [Repository Directory Structure](#repository-directory-structure)
+11. [Local Development & Setup Guide](#local-development--setup-guide)
+12. [License & Maintainers](#license--maintainers)
 
 ---
 
@@ -98,50 +104,50 @@ CineBook addresses core operational challenges in modern multiplex movie booking
 
 ### 4.1 Dual-Backend Architecture
 ```mermaid
-graph TD
+flowchart TD
     Client["🌐 Client Web App (React 18 + TypeScript)"]
     GateScanner["📱 Gate Pass Scanner / Mobile Lens"]
     
-    subgraph Core ["Transactional Core (Port 8080)"]
+    subgraph Core["Transactional Core (Port 8080)"]
         JavaAPI["⚙️ Spring Boot REST API (Java 21)"]
         Ledger["📒 Double-Entry Financial Ledger"]
         SeatLock["🔒 Redis Pessimistic Seat Hold"]
     end
 
-    subgraph AI ["AI & Semantic Engine (Port 8000)"]
+    subgraph AI["AI & Semantic Engine (Port 8000)"]
         FastAPI["⚡ Python FastAPI AI Service"]
         LangGraph["🧠 LangGraph Multi-Step Agent"]
         Embedder["📐 BAAI/bge-small-en-v1.5 Embedder"]
         Memory["🧠 Long-Term Preference Memory"]
     end
 
-    subgraph Data ["Database Tier"]
-        DB[("🐘 PostgreSQL 16 + pgvector (384d)")]
-        Redis[("⚡ Redis 7 (Distributed Cache & Locks)")]
+    subgraph Data["Database Tier"]
+        DB[("🐘 PostgreSQL 16 + pgvector 384d")]
+        Redis[("⚡ Redis 7 Distributed Cache & Locks")]
     end
 
-    subgraph External ["External Services"]
+    subgraph External["External Services"]
         TMDB["🎬 TMDB API (Movie Metadata)"]
         Groq["🤖 Groq LLM API (Llama 3.3 70B)"]
         Razorpay["💳 Razorpay Payment Gateway"]
     end
 
-    Client -->|HTTPS / REST| JavaAPI
-    Client -->|AI Search & Chat| JavaAPI
-    GateScanner -->|Scan QR Code| JavaAPI
+    Client -->|"HTTPS / REST"| JavaAPI
+    Client -->|"AI Search & Chat"| JavaAPI
+    GateScanner -->|"Scan QR Code"| JavaAPI
     
-    JavaAPI -->|RestClient (mTLS/Secret)| FastAPI
+    JavaAPI -->|"RestClient (mTLS / Secret)"| FastAPI
     FastAPI --> LangGraph
     LangGraph --> Embedder
     LangGraph --> Memory
-    FastAPI -->|LLM Tool Calling| Groq
+    FastAPI -->|"LLM Tool Calling"| Groq
 
-    JavaAPI -->|ACID Transactions| DB
-    JavaAPI -->|Distributed Lock| Redis
-    FastAPI -->|Vector HNSW / Hybrid Search| DB
+    JavaAPI -->|"ACID Transactions"| DB
+    JavaAPI -->|"Distributed Lock"| Redis
+    FastAPI -->|"Vector HNSW / Hybrid Search"| DB
 
-    JavaAPI -->|Movie Import| TMDB
-    JavaAPI -->|Payment Webhook| Razorpay
+    JavaAPI -->|"Movie Import"| TMDB
+    JavaAPI -->|"Payment Webhook"| Razorpay
 ```
 
 ---
@@ -294,7 +300,7 @@ CineBook's payment and transaction core is designed from the ground up to behave
 - **Comprehensive Failure Accumulation**: Unlike a standard `.and()` predicate chain that short-circuits on the first error, CineBook's `RuleEvaluationPipeline` evaluates all rules in one pass, returning a full `List<String>` of failed rule reasons for auditing and telemetry.
 - **Railway-Oriented Monadic Flow**: Eliminates `null` checks and try/catch sprawl using `Optional` and higher-order functions:
   $$\text{validateRequest}(req) \xrightarrow{\text{flatMap}} \text{checkSeatHold}(req) \xrightarrow{\text{flatMap}} \text{authorizePayment}(req) \xrightarrow{\text{flatMap}} \text{postLedger}(req)$$
-- 📖 *For a deep dive on applied FP principles and honest Java limitations (no ADTs, no monadic error accumulation like Haskell's Validation), read [PAYMENT_FP_NOTES.md](file:///d:/Movie%20Booking%20System-II/PAYMENT_FP_NOTES.md).*
+- 📖 *For a deep dive on applied FP principles and honest Java limitations (no ADTs, no monadic error accumulation like Haskell's Validation), read [PAYMENT_FP_NOTES.md](PAYMENT_FP_NOTES.md).*
 
 ### 6.2 Cryptographic Idempotency & Distributed Claim State Machine
 - **Atomic Insert-Claim Pattern**: Solves multi-instance concurrent race conditions by attempting to insert an `IdempotencyRecord` with `status = 'PROCESSING'` inside an isolated `REQUIRES_NEW` transaction **before** executing any business logic.
@@ -349,7 +355,90 @@ CineBook's payment and transaction core is designed from the ground up to behave
 - **Event Deduplication**: Webhooks are deduped by event ID through the idempotency engine, preventing double-credits.
 
 ### 6.9 Induced Failure Recovery & Post-Mortem Log
-- 📖 *For complete technical details on induced network timeouts, webhook replays, and concurrency races, see [INCIDENTS.md](file:///d:/Movie%20Booking%20System-II/INCIDENTS.md).*
+- 📖 *For complete technical details on induced network timeouts, webhook replays, and concurrency races, see [INCIDENTS.md](INCIDENTS.md).*
+
+---
+
+## 📊 Agentic AI Platform, Hybrid Retrieval & LLM Evaluation
+
+CineBook's AI engine is not a superficial chatbot wrapper; it is an autonomous, production-grade microservice orchestrating multi-step agent workflows, hybrid retrieval, and rigorous evaluation.
+
+### 7.1 Dual-Backend Architecture & Strict Transactional Boundaries
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                       CINEBOOK ARCHITECTURE                                            │
+│                                                                                                        │
+│  User Query / Profile ──► Bi-Encoder (BGE-Small) ──► pgvector HNSW Cosine Search ──┐                   │
+│                                                                                    ├──► RRF (k=60) ──► │
+│  Filters / Keywords   ──► PostgreSQL tsvector    ──► BM25 Full-Text Search       ──┘                   │
+│                                                                                                        │
+│  ──► Multi-Factor Re-ranking (Semantic 35% + Genre 25% + Rating 15% + Interaction History 10%)         │
+│  ──► Human-Interpretable Explanations & LangGraph Career/Movie Concierge Agent                         │
+└────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+- **Separation of Concerns:** Java Spring Boot maintains authoritative control over transactions, double-entry ledger entries, and pessimistic seat holds. The Python FastAPI microservice runs autonomous reasoning and semantic search.
+- **Strict Role Isolation (`cinebook_ai`):** Granted read-only (`SELECT`) access to catalog data (`movies`, `theaters`, `screens`, `shows`), and read/write access only to AI-owned tables (`movie_embeddings`, `chat_sessions`, `chat_messages`, `user_memory`, `user_preferences`, `agent_tool_calls`, `recommendation_events`, `recommendation_feedback`). Zero write permissions on financial tables (`bookings`, `payments`, `wallets`, `ledger_entries`, `show_seats`).
+
+### 7.2 Two-Stage Hybrid Retrieval & Reciprocal Rank Fusion (RRF)
+
+To eliminate hallucinations and overcome vocabulary mismatch, CineBook fuses dense semantic vector search with lexical full-text search:
+1. **Dense Vector Embeddings:** `BAAI/bge-small-en-v1.5` generates 384-dimensional dense vectors indexed with PostgreSQL `pgvector` HNSW (`vector_cosine_ops`, $m=16, ef\_construction=64$).
+2. **Lexical Full-Text Search:** PostgreSQL `tsvector` and `tsquery` index exact movie titles, actors, directors, and genres.
+3. **Reciprocal Rank Fusion (RRF):** Merges disparate rank lists without fragile score normalization:
+   $$RRF\_Score(d) = \sum_{m \in M} \frac{w_m}{k + r_m(d)} \quad (k=60, w_{\text{vector}}=0.7, w_{\text{fts}}=0.3)$$
+
+### 7.3 Pydantic-Enforced Structured Tool Inputs & Outputs
+
+All agent interactions enforce strict JSON Schema contracts using Pydantic v2 (`app/agents/tools.py`):
+- **Typed Input Models:**
+  - `SearchMoviesArgs`: `query: str`, `genre: Optional[str]`, `limit: int = Field(default=5, ge=1, le=10)`
+  - `MovieDetailsArgs`: `title_or_id: str`
+  - `RecommendationsArgs`: `limit: int = Field(default=5, ge=1, le=10)`
+  - `ShowtimesArgs`: `movie_title: Optional[str]`, `city: str = Field(default="Mumbai")`
+  - `BookingQuoteArgs`: `num_tickets: int = Field(default=2, ge=1, le=10)`, `ticket_tier: str`
+- **OpenAI/Groq Function Schema Export:** Auto-generates standard JSON Schema definitions via `SearchMoviesArgs.schema()` for native LLM function calling.
+- **Runtime Argument Validation:** When the LLM emits a tool call, arguments are instantiated via `SearchMoviesArgs(**raw_args)`. Any hallucinated or out-of-bounds argument instantly triggers a caught Pydantic `ValidationError`, returning structured diagnostics (`INVALID_ARGS`) without crashing.
+- **Audit Logging:** Every tool call is logged to `agent_tool_calls` with execution status, parameters, output, and duration in milliseconds.
+
+### 7.4 Prompt Engineering & Defense-in-Depth
+
+- **Anti-Hallucination Conditioning:** System prompt (`app/agents/prompts.py`) strictly conditions the LLM: *"NEVER fabricate movie titles, showtimes, seat availability, or prices from imagination; always invoke catalog tools"*.
+- **Architectural Boundary Enforcement:** The LLM is explicitly informed it is a read-only concierge that cannot lock seats or charge balances, directing users to the interactive seat map.
+- **Prompt Injection Defense:** Explicit security directives instruct the LLM to ignore user override commands, SQL queries, and to treat retrieved catalog metadata as untrusted inputs.
+- **Dynamic Context Assembly:** Injects a 10-turn rolling conversation window from `chat_messages` along with long-term user preferences (favorite genres, directors) from `user_preferences`.
+- **Cycle Guard:** LangGraph state machine enforces `MAX_ITERATIONS = 4` to prevent infinite loops or token exhaustion.
+
+### 7.5 Empirical Evaluation Metrics (Offline vs. Live)
+
+CineBook features an automated evaluation harness (`cinebook-ai-service/app/evaluation/runner.py`) executing against 22 golden benchmark scenarios across Information Retrieval (IR), Tool Selection, and Adversarial Security:
+
+| Metric | Target Threshold | Actual Score | Status | Description |
+|---|---|---|---|---|
+| **Mean Reciprocal Rank (MRR)** | $\ge 0.80$ | **0.7157** | **Measured** | Position of the first relevant result: $\frac{1}{\|Q\|} \sum \frac{1}{\text{rank}_i}$. Measures if the top match appears at rank 1 or 2. |
+| **NDCG@5** | $\ge 0.75$ | **0.7222** | **Measured** | Normalized Discounted Cumulative Gain: Accounts for position discount using logarithmic decay. |
+| **Retrieval Recall@5** | $\ge 0.75$ | **0.8480** | **PASS** | **84.8%** of ground-truth relevant items successfully recovered in the top 5 candidates. |
+| **Retrieval Precision@5** | $\ge 0.70$ | **0.2471** | **WARN** | Captures precision in top-5 against narrow 1-2 item ground-truth targets (lexical baseline). |
+| **Tool Selection Precision** | $\ge 0.90$ | **1.0000** | **PASS** | **100% precision** in routing natural language intent to the correct underlying tool. |
+| **Tool Selection Recall** | $\ge 0.90$ | **1.0000** | **PASS** | **100% recall** in activating multi-tool sequences (e.g., quotes + showtimes). |
+| **Tool Selection F1 Score** | $\ge 0.90$ | **1.0000** | **PASS** | Harmonic mean of tool selection precision and recall. |
+| **Adversarial Safety Pass Rate** | $1.00$ | **1.0000** | **PASS** | **100% defense** against prompt injections, SQL overrides, and system prompt extraction. |
+
+#### Evaluation Modes:
+- **Offline Mode (`--mode offline`)**: Fast (4.51 ms), zero-dependency, deterministic heuristic router for headless CI pipelines without external network or API keys.
+- **Live Mode (`--mode live`)**: Real-time evaluation against Groq LLM API (`llama-3.1-70b-versatile`) measuring stochastic function calling, schema adherence, and latency under 12.0s timeouts.
+
+### 7.6 Cross-Domain Application: Career Assistance & Job Discovery (e.g. Elip)
+
+The exact IR and Agentic AI architectures built for CineBook directly transfer to modern career assistance and job discovery platforms:
+
+| CineBook Mechanism | Job Discovery / Career Platform (Elip) | Technical Advantage |
+|---|---|---|
+| **Movie Metadata Embeddings** | **Job Description (JD) Embeddings** | Dense vector embeddings map unstructured resumes and job postings into a shared semantic latent space, solving vocabulary mismatch (e.g., *"backend scalability"* $\leftrightarrow$ *"high-throughput distributed systems"*). |
+| **Hybrid Search + RRF** | **Hard vs. Soft Job Matching** | Fuses semantic fit ($w=0.7$) with strict filtering ($w=0.3$) for mandatory requirements like location, salary band, visa sponsorship, and tech stack. |
+| **Multi-Factor Re-Ranking** | **Candidate-Role Scoring** | Combines skill overlap, compensation alignment, seniority fit, and novelty decay (penalizing already-applied or dismissed roles). |
+| **LangGraph Agent Workflows** | **Conversational Career Concierge** | Multi-step agent orchestrates resume gap analysis, interview question generation, and salary benchmarking via allowlisted tools. |
 
 ---
 
@@ -498,89 +587,6 @@ cd cinebook-frontend
 npm install
 npm run dev
 ```
-
----
-
-## 📊 Agentic AI Platform, Hybrid Retrieval & LLM Evaluation
-
-CineBook's AI engine is not a superficial chatbot wrapper; it is an autonomous, production-grade microservice orchestrating multi-step agent workflows, hybrid retrieval, and rigorous evaluation.
-
-### 5.1 Dual-Backend Architecture & Strict Transactional Boundaries
-
-```
-┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                       CINEBOOK ARCHITECTURE                                            │
-│                                                                                                        │
-│  User Query / Profile ──► Bi-Encoder (BGE-Small) ──► pgvector HNSW Cosine Search ──┐                   │
-│                                                                                    ├──► RRF (k=60) ──► │
-│  Filters / Keywords   ──► PostgreSQL tsvector    ──► BM25 Full-Text Search       ──┘                   │
-│                                                                                                        │
-│  ──► Multi-Factor Re-ranking (Semantic 35% + Genre 25% + Rating 15% + Interaction History 10%)         │
-│  ──► Human-Interpretable Explanations & LangGraph Career/Movie Concierge Agent                         │
-└────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-```
-
-- **Separation of Concerns:** Java Spring Boot maintains authoritative control over transactions, double-entry ledger entries, and pessimistic seat holds. The Python FastAPI microservice runs autonomous reasoning and semantic search.
-- **Strict Role Isolation (`cinebook_ai`):** Granted read-only (`SELECT`) access to catalog data (`movies`, `theaters`, `screens`, `shows`), and read/write access only to AI-owned tables (`movie_embeddings`, `chat_sessions`, `chat_messages`, `user_memory`, `user_preferences`, `agent_tool_calls`, `recommendation_events`, `recommendation_feedback`). Zero write permissions on financial tables (`bookings`, `payments`, `wallets`, `ledger_entries`, `show_seats`).
-
-### 5.2 Two-Stage Hybrid Retrieval & Reciprocal Rank Fusion (RRF)
-
-To eliminate hallucinations and overcome vocabulary mismatch, CineBook fuses dense semantic vector search with lexical full-text search:
-1. **Dense Vector Embeddings:** `BAAI/bge-small-en-v1.5` generates 384-dimensional dense vectors indexed with PostgreSQL `pgvector` HNSW (`vector_cosine_ops`, $m=16, ef\_construction=64$).
-2. **Lexical Full-Text Search:** PostgreSQL `tsvector` and `tsquery` index exact movie titles, actors, directors, and genres.
-3. **Reciprocal Rank Fusion (RRF):** Merges disparate rank lists without fragile score normalization:
-   $$RRF\_Score(d) = \sum_{m \in M} \frac{w_m}{k + r_m(d)} \quad (k=60, w_{\text{vector}}=0.7, w_{\text{fts}}=0.3)$$
-
-### 5.3 Pydantic-Enforced Structured Tool Inputs & Outputs
-
-All agent interactions enforce strict JSON Schema contracts using Pydantic v2 (`app/agents/tools.py`):
-- **Typed Input Models:**
-  - `SearchMoviesArgs`: `query: str`, `genre: Optional[str]`, `limit: int = Field(default=5, ge=1, le=10)`
-  - `MovieDetailsArgs`: `title_or_id: str`
-  - `RecommendationsArgs`: `limit: int = Field(default=5, ge=1, le=10)`
-  - `ShowtimesArgs`: `movie_title: Optional[str]`, `city: str = Field(default="Mumbai")`
-  - `BookingQuoteArgs`: `num_tickets: int = Field(default=2, ge=1, le=10)`, `ticket_tier: str`
-- **OpenAI/Groq Function Schema Export:** Auto-generates standard JSON Schema definitions via `SearchMoviesArgs.schema()` for native LLM function calling.
-- **Runtime Argument Validation:** When the LLM emits a tool call, arguments are instantiated via `SearchMoviesArgs(**raw_args)`. Any hallucinated or out-of-bounds argument instantly triggers a caught Pydantic `ValidationError`, returning structured diagnostics (`INVALID_ARGS`) without crashing.
-- **Audit Logging:** Every tool call is logged to `agent_tool_calls` with execution status, parameters, output, and duration in milliseconds.
-
-### 5.4 Prompt Engineering & Defense-in-Depth
-
-- **Anti-Hallucination Conditioning:** System prompt (`app/agents/prompts.py`) strictly conditions the LLM: *"NEVER fabricate movie titles, showtimes, seat availability, or prices from imagination; always invoke catalog tools"*.
-- **Architectural Boundary Enforcement:** The LLM is explicitly informed it is a read-only concierge that cannot lock seats or charge balances, directing users to the interactive seat map.
-- **Prompt Injection Defense:** Explicit security directives instruct the LLM to ignore user override commands, SQL queries, and to treat retrieved catalog metadata as untrusted inputs.
-- **Dynamic Context Assembly:** Injects a 10-turn rolling conversation window from `chat_messages` along with long-term user preferences (favorite genres, directors) from `user_preferences`.
-- **Cycle Guard:** LangGraph state machine enforces `MAX_ITERATIONS = 4` to prevent infinite loops or token exhaustion.
-
-### 5.5 Empirical Evaluation Metrics (Offline vs. Live)
-
-CineBook features an automated evaluation harness (`cinebook-ai-service/app/evaluation/runner.py`) executing against 22 golden benchmark scenarios across Information Retrieval (IR), Tool Selection, and Adversarial Security:
-
-| Metric | Target Threshold | Actual Score | Status | Description |
-|---|---|---|---|---|
-| **Mean Reciprocal Rank (MRR)** | $\ge 0.80$ | **0.7157** | **Measured** | Position of the first relevant result: $\frac{1}{\|Q\|} \sum \frac{1}{\text{rank}_i}$. Measures if the top match appears at rank 1 or 2. |
-| **NDCG@5** | $\ge 0.75$ | **0.7222** | **Measured** | Normalized Discounted Cumulative Gain: Accounts for position discount using logarithmic decay. |
-| **Retrieval Recall@5** | $\ge 0.75$ | **0.8480** | **PASS** | **84.8%** of ground-truth relevant items successfully recovered in the top 5 candidates. |
-| **Retrieval Precision@5** | $\ge 0.70$ | **0.2471** | **WARN** | Captures precision in top-5 against narrow 1-2 item ground-truth targets (lexical baseline). |
-| **Tool Selection Precision** | $\ge 0.90$ | **1.0000** | **PASS** | **100% precision** in routing natural language intent to the correct underlying tool. |
-| **Tool Selection Recall** | $\ge 0.90$ | **1.0000** | **PASS** | **100% recall** in activating multi-tool sequences (e.g., quotes + showtimes). |
-| **Tool Selection F1 Score** | $\ge 0.90$ | **1.0000** | **PASS** | Harmonic mean of tool selection precision and recall. |
-| **Adversarial Safety Pass Rate** | $1.00$ | **1.0000** | **PASS** | **100% defense** against prompt injections, SQL overrides, and system prompt extraction. |
-
-#### Evaluation Modes:
-- **Offline Mode (`--mode offline`)**: Fast (4.51 ms), zero-dependency, deterministic heuristic router for headless CI pipelines without external network or API keys.
-- **Live Mode (`--mode live`)**: Real-time evaluation against Groq LLM API (`llama-3.1-70b-versatile`) measuring stochastic function calling, schema adherence, and latency under 12.0s timeouts.
-
-### 5.6 Cross-Domain Application: Career Assistance & Job Discovery (e.g. Elip)
-
-The exact IR and Agentic AI architectures built for CineBook directly transfer to modern career assistance and job discovery platforms:
-
-| CineBook Mechanism | Job Discovery / Career Platform (Elip) | Technical Advantage |
-|---|---|---|
-| **Movie Metadata Embeddings** | **Job Description (JD) Embeddings** | Dense vector embeddings map unstructured resumes and job postings into a shared semantic latent space, solving vocabulary mismatch (e.g., *"backend scalability"* $\leftrightarrow$ *"high-throughput distributed systems"*). |
-| **Hybrid Search + RRF** | **Hard vs. Soft Job Matching** | Fuses semantic fit ($w=0.7$) with strict filtering ($w=0.3$) for mandatory requirements like location, salary band, visa sponsorship, and tech stack. |
-| **Multi-Factor Re-Ranking** | **Candidate-Role Scoring** | Combines skill overlap, compensation alignment, seniority fit, and novelty decay (penalizing already-applied or dismissed roles). |
-| **LangGraph Agent Workflows** | **Conversational Career Concierge** | Multi-step agent orchestrates resume gap analysis, interview question generation, and salary benchmarking via allowlisted tools. |
 
 ---
 

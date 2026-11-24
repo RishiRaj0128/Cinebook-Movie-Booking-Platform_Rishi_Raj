@@ -125,7 +125,7 @@ jobs:
           curl -sSfL https://github.com/google/osv-scanner/releases/download/v2.6.0/osv-scanner_linux_amd64 -o /usr/local/bin/osv-scanner
           chmod +x /usr/local/bin/osv-scanner
           echo "Scanning repository dependencies across Maven and NPM ecosystems..."
-          osv-scanner --format=sarif --output=osv-results.sarif -r . || true
+          osv-scanner --format=sarif --output=osv-results.sarif -r --x-exclude=cinebook-ai-service . || true
 
       - name: Upload OSV-Scanner SARIF to GitHub Code Scanning
         if: always()

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Search, Loader2, Heart, Users, Compass, Film, Coffee, Utensils } from 'lucide-react';
+import { Sparkles, Search, Loader2, Heart, Film } from 'lucide-react';
 import { api } from '../services/api';
 
 interface AiSearchBoxProps {

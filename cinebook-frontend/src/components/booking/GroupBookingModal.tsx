@@ -9,10 +9,8 @@ import {
   ShieldCheck,
   CheckCircle,
   CreditCard,
-  AlertCircle,
-  Sparkles,
 } from 'lucide-react';
-import { GroupBookingSession, GroupMemberSeat, Show, Booking } from '../../types';
+import { GroupBookingSession, Booking } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 
 interface GroupBookingModalProps {

@@ -8,7 +8,6 @@ import {
   Eye,
   Utensils,
   Users,
-  Sparkles,
 } from 'lucide-react';
 import { Show, ShowSeat, Booking, SnackOrderItem, GroupBookingSession } from '../types';
 import { api } from '../services/api';

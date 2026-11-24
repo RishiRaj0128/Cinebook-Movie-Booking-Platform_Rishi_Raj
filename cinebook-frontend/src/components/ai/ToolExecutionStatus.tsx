@@ -1,5 +1,5 @@
 import React from 'react';
-import { Wrench, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
+import { Wrench, CheckCircle2, AlertCircle } from 'lucide-react';
 import { AiToolExecution } from '../../types';
 
 interface ToolExecutionStatusProps {
