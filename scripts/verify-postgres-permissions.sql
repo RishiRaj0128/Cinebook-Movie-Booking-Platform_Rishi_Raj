@@ -90,12 +90,11 @@ SELECT count(*) AS tool_call_count FROM agent_tool_calls;
 
 -- Gate 7.1: User PII Isolation
 \echo 'Attempting unauthorized read on sensitive user table:'
-SELECT id, email, password_hash, phone FROM users LIMIT 1;
+SELECT * FROM users LIMIT 1;
 
 -- Gate 7.2: Booking Write Blockade
 \echo 'Attempting unauthorized INSERT into bookings:'
-INSERT INTO bookings (id, user_id, show_id, total_amount, status, booking_time) 
-VALUES (gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), 50000, 'CONFIRMED', now());
+INSERT INTO bookings (id) VALUES (gen_random_uuid());
 
 -- Gate 7.3: Seat Lock Manipulation Blockade
 \echo 'Attempting unauthorized UPDATE on show_seats (seat locking bypass):'
@@ -103,17 +102,15 @@ UPDATE show_seats SET status = 'LOCKED' WHERE id = gen_random_uuid();
 
 -- Gate 7.4: Payment Table Blockade
 \echo 'Attempting unauthorized INSERT into payments:'
-INSERT INTO payments (id, booking_id, amount, status, payment_method) 
-VALUES (gen_random_uuid(), gen_random_uuid(), 50000, 'SUCCESS', 'RAZORPAY');
+INSERT INTO payments (id) VALUES (gen_random_uuid());
 
 -- Gate 7.5: Ledger Entry Mutation Blockade
 \echo 'Attempting unauthorized INSERT into double-entry ledger_entries:'
-INSERT INTO ledger_entries (id, transaction_id, entry_type, account_type, amount, balance_after) 
-VALUES (gen_random_uuid(), gen_random_uuid(), 'CREDIT', 'ESCROW', 50000, 50000);
+INSERT INTO ledger_entries (id) VALUES (gen_random_uuid());
 
 -- Gate 7.6: User Wallet Mutation Blockade
 \echo 'Attempting unauthorized UPDATE on wallets:'
-UPDATE wallets SET balance = balance + 100000;
+UPDATE wallets SET balance_paise = balance_paise + 100000 WHERE id = gen_random_uuid();
 
 RESET ROLE;
 \echo '============================================================================'
