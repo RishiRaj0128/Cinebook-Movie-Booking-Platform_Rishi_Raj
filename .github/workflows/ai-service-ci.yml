@@ -43,14 +43,16 @@ jobs:
           ENVIRONMENT: testing
           USE_MOCK_EMBEDDINGS: "true"
           AI_INTERNAL_API_KEY: cinebook-internal-secret-key-change-in-production
+          PYTHONPATH: .
         run: |
-          pytest tests/ -v
+          python -m pytest tests/ -v
 
       - name: Run Benchmark Golden Evaluation
         working-directory: ./cinebook-ai-service
         env:
           ENVIRONMENT: testing
           USE_MOCK_EMBEDDINGS: "true"
+          PYTHONPATH: .
         run: |
           python -m app.evaluation.runner --mode offline
 

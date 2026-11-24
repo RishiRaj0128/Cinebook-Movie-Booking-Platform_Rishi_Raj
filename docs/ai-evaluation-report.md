@@ -1,9 +1,9 @@
 # CineBook AI Platform — Evaluation Report (OFFLINE SIMULATION)
 
 > **Evaluation Mode:** `OFFLINE`  
-> **Generated:** 2026-11-24 14:56:59 UTC  
+> **Generated:** 2026-11-24 16:44:39 UTC  
 > **Total Scenarios Evaluated:** 22 (Retrieval: 17, Adversarial: 2)  
-> **Execution Duration:** 4.51 ms  
+> **Execution Duration:** 3.79 ms  
 
 - **Evaluation Mode:** **OFFLINE SIMULATION (CI Safe)**
 - **Methodology:** Offline deterministic keyword router and lexical catalog overlap. Zero external API calls made.
