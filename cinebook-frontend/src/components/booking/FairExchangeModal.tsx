@@ -5,12 +5,7 @@ import {
   ShieldCheck,
   Tag,
   CheckCircle,
-  Calendar,
-  Clock,
-  MapPin,
   Bell,
-  Search,
-  Sparkles,
 } from 'lucide-react';
 import { ResaleListing, Booking } from '../../types';
 import { useAuth } from '../../context/AuthContext';

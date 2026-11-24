@@ -2,7 +2,8 @@ import uuid
 from typing import Optional
 from fastapi import Header, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import PyJWTError
 from pydantic import BaseModel
 from app.config import settings
 from app.core.exceptions import AuthenticationException
@@ -56,7 +57,7 @@ def get_current_user(
             email=str(email),
             role=str(role)
         )
-    except (JWTError, ValueError) as e:
+    except (PyJWTError, ValueError) as e:
         raise AuthenticationException(f"Invalid or expired JWT token: {str(e)}")
 
 def get_optional_user(

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye, Volume2, Compass, Sparkles } from 'lucide-react';
+import { Eye, Volume2, Sparkles } from 'lucide-react';
 import { SeatSightlineInfo } from '../../types';
 
 interface SeatSightlinePreviewProps {

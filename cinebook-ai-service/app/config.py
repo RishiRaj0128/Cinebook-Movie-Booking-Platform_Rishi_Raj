@@ -18,6 +18,12 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     HOST: str = "0.0.0.0"
     PORT: int = 8000
+    CORS_ORIGINS: List[str] = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "https://coruscating-eclair-2724dd.netlify.app",
+        "https://cinebookmovie.netlify.app",
+    ]
 
     # Service Security
     INTERNAL_API_KEY: str = "cinebook-internal-secret-key-change-in-production"

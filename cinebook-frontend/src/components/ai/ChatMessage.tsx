@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, User, Film, Star } from 'lucide-react';
+import { Sparkles, User, Film } from 'lucide-react';
 import { AiChatMessage } from '../../types';
 import { ToolExecutionStatus } from './ToolExecutionStatus';
 import { FeedbackButtons } from './FeedbackButtons';

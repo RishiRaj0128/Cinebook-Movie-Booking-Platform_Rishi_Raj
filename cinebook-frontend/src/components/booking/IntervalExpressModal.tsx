@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus, Minus, Utensils, CheckCircle, Clock, ShieldCheck, Sparkles } from 'lucide-react';
+import { X, Plus, Minus, Utensils, CheckCircle, Clock, Sparkles } from 'lucide-react';
 import { SnackItem, SnackOrderItem } from '../../types';
 
 export const CINE_SNACK_CATALOG: SnackItem[] = [

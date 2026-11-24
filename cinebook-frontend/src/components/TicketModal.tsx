@@ -12,8 +12,6 @@ import {
   RefreshCw,
   Lock,
   Repeat,
-  Utensils,
-  Share2,
 } from 'lucide-react';
 import { Booking, ResaleListing } from '../types';
 import QRCode from 'qrcode';
@@ -33,7 +31,6 @@ export const TicketModal: React.FC<TicketModalProps> = ({
   const [secondsLeft, setSecondsLeft] = useState<number>(15);
   const [dynamicToken, setDynamicToken] = useState<string>('');
   const [resaleListed, setResaleListed] = useState<boolean>(false);
-  const [resaleSuccessMsg, setResaleSuccessMsg] = useState<string>('');
 
 
   const show = booking.show;
@@ -133,7 +130,7 @@ export const TicketModal: React.FC<TicketModalProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Handle Single Page PDF Print via dedicated isolated popup window
+  // Handle Single Page PDF Print via dedicated isolated popup window using secure DOM construction
   const handlePrint = () => {
     const printWindow = window.open('', '_blank', 'width=750,height=900');
     if (!printWindow) {
@@ -141,186 +138,267 @@ export const TicketModal: React.FC<TicketModalProps> = ({
       return;
     }
 
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>CineBook Ticket Pass - ${movie?.title || 'Pass'}</title>
-          <style>
-            @page {
-              size: A4 portrait;
-              margin: 10mm;
-            }
-            body {
-              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-              background-color: #ffffff;
-              color: #0f172a;
-              margin: 0;
-              padding: 0;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-            .ticket-card {
-              max-width: 620px;
-              margin: 10px auto;
-              border: 2px solid #0f172a;
-              border-radius: 14px;
-              overflow: hidden;
-              background: #ffffff;
-            }
-            .ticket-header {
-              background: #e50914;
-              color: #ffffff;
-              padding: 18px 24px;
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-            }
-            .ticket-header h1 {
-              margin: 0;
-              font-size: 20px;
-              font-weight: 800;
-            }
-            .ticket-header p {
-              margin: 2px 0 0 0;
-              font-size: 12px;
-              opacity: 0.9;
-            }
-            .ticket-body {
-              padding: 20px 24px;
-            }
-            .holder-bar {
-              background: #f8fafc;
-              border: 1px solid #cbd5e1;
-              border-radius: 8px;
-              padding: 8px 14px;
-              margin-bottom: 16px;
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-            }
-            .movie-grid {
-              display: grid;
-              grid-template-columns: 110px 1fr;
-              gap: 16px;
-              margin-bottom: 16px;
-            }
-            .poster-img {
-              width: 110px;
-              height: 160px;
-              border-radius: 8px;
-              object-fit: cover;
-            }
-            .movie-title {
-              font-size: 22px;
-              font-weight: 900;
-              margin: 4px 0 6px 0;
-              color: #0f172a;
-            }
-            .pill {
-              display: inline-block;
-              background: #f1f5f9;
-              padding: 5px 10px;
-              border-radius: 6px;
-              font-size: 12px;
-              font-weight: 700;
-              margin-right: 6px;
-              margin-top: 6px;
-            }
-            .stub-line {
-              border-top: 2px dashed #94a3b8;
-              margin: 16px 0;
-            }
-            .bottom-grid {
-              display: grid;
-              grid-template-columns: 1fr 180px;
-              gap: 16px;
-              align-items: center;
-            }
-            .qr-container {
-              border: 2px solid #e50914;
-              border-radius: 10px;
-              padding: 8px;
-              text-align: center;
-              background: #ffffff;
-            }
-            .qr-container img {
-              width: 140px;
-              height: 140px;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="ticket-card">
-            <div class="ticket-header">
-              <div>
-                <h1>Booking Confirmed</h1>
-                <p>Official Digital Cinema Entry Pass</p>
-              </div>
-              <div style="font-weight: 900; font-size: 14px; background: rgba(255,255,255,0.25); padding: 4px 12px; border-radius: 12px;">
-                CINEBOOK
-              </div>
-            </div>
+    const doc = printWindow.document;
+    doc.open();
+    doc.title = `CineBook Ticket Pass - ${movie?.title || 'Pass'}`;
 
-            <div class="ticket-body">
-              <div class="holder-bar">
-                <div>
-                  <span style="color: #64748b; font-size: 11px; font-weight: 800; text-transform: uppercase;">Ticket Holder</span>
-                  <div style="font-weight: 800; font-size: 14px; color: #0f172a;">${userName} (${userEmail})</div>
-                </div>
-                <div style="background: #10b981; color: #ffffff; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 800;">
-                  VERIFIED PASS
-                </div>
-              </div>
+    const style = doc.createElement('style');
+    style.textContent = `
+      @page { size: A4 portrait; margin: 10mm; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background-color: #ffffff;
+        color: #0f172a;
+        margin: 0;
+        padding: 0;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .ticket-card {
+        max-width: 620px;
+        margin: 10px auto;
+        border: 2px solid #0f172a;
+        border-radius: 14px;
+        overflow: hidden;
+        background: #ffffff;
+      }
+      .ticket-header {
+        background: #e50914;
+        color: #ffffff;
+        padding: 18px 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .ticket-header h1 { margin: 0; font-size: 20px; font-weight: 800; }
+      .ticket-header p { margin: 2px 0 0 0; font-size: 12px; opacity: 0.9; }
+      .ticket-body { padding: 20px 24px; }
+      .holder-bar {
+        background: #f8fafc;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 8px 14px;
+        margin-bottom: 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .movie-grid {
+        display: grid;
+        grid-template-columns: 110px 1fr;
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+      .poster-img {
+        width: 110px;
+        height: 160px;
+        border-radius: 8px;
+        object-fit: cover;
+      }
+      .movie-title {
+        font-size: 22px;
+        font-weight: 900;
+        margin: 4px 0 6px 0;
+        color: #0f172a;
+      }
+      .pill {
+        display: inline-block;
+        background: #f1f5f9;
+        padding: 5px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 700;
+        margin-right: 6px;
+        margin-top: 6px;
+      }
+      .stub-line { border-top: 2px dashed #94a3b8; margin: 16px 0; }
+      .bottom-grid {
+        display: grid;
+        grid-template-columns: 1fr 180px;
+        gap: 16px;
+        align-items: center;
+      }
+      .qr-container {
+        border: 2px solid #e50914;
+        border-radius: 10px;
+        padding: 8px;
+        text-align: center;
+        background: #ffffff;
+      }
+      .qr-container img { width: 140px; height: 140px; }
+    `;
+    doc.head.appendChild(style);
 
-              <div class="movie-grid">
-                <img src="${movie?.posterUrl || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&q=80'}" class="poster-img" />
-                <div>
-                  <div style="color: #e50914; font-size: 11px; font-weight: 800; text-transform: uppercase;">${movie?.genre || ''} • ${movie?.language || ''}</div>
-                  <div class="movie-title">${movie?.title || 'Movie'}</div>
-                  <div style="font-size: 13px; font-weight: 700; color: #1e293b;">📍 ${theater?.name || 'CineBook Theater'} (${theater?.city || ''})</div>
-                  <div style="font-size: 11px; color: #64748b; margin-top: 2px;">${theater?.address || ''}</div>
-                  <div style="margin-top: 8px;">
-                    <span class="pill">📅 ${showDate}</span>
-                    <span class="pill">⏰ ${showTime}</span>
-                    <span class="pill" style="background: #fee2e2; color: #991b1b;">${screen?.name || 'Auditorium 1'}</span>
-                  </div>
-                </div>
-              </div>
+    const card = doc.createElement('div');
+    card.className = 'ticket-card';
 
-              <div class="stub-line"></div>
+    // Header
+    const header = doc.createElement('div');
+    header.className = 'ticket-header';
+    const hLeft = doc.createElement('div');
+    const h1 = doc.createElement('h1');
+    h1.textContent = 'Booking Confirmed';
+    const hp = doc.createElement('p');
+    hp.textContent = 'Official Digital Cinema Entry Pass';
+    hLeft.appendChild(h1);
+    hLeft.appendChild(hp);
+    const hBadge = doc.createElement('div');
+    hBadge.setAttribute('style', 'font-weight: 900; font-size: 14px; background: rgba(255,255,255,0.25); padding: 4px 12px; border-radius: 12px;');
+    hBadge.textContent = 'CINEBOOK';
+    header.appendChild(hLeft);
+    header.appendChild(hBadge);
+    card.appendChild(header);
 
-              <div class="bottom-grid">
-                <div>
-                  <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px; margin-bottom: 8px;">
-                    <span style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase;">Reserved Seats</span>
-                    <div style="font-size: 18px; font-weight: 900; color: #e50914;">${seatsList}</div>
-                  </div>
-                  <div style="display: flex; justify-content: space-between; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px;">
-                    <div>
-                      <span style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase;">Total Paid</span>
-                      <div style="font-size: 15px; font-weight: 800; color: #10b981;">₹${totalRupees}</div>
-                    </div>
-                    <div style="text-align: right;">
-                      <span style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase;">Booking Ref</span>
-                      <div style="font-size: 11px; font-family: monospace; font-weight: 700; color: #0f172a;">${booking.id.substring(0, 16)}</div>
-                    </div>
-                  </div>
-                </div>
+    // Body
+    const body = doc.createElement('div');
+    body.className = 'ticket-body';
 
-                <div class="qr-container">
-                  <img src="${qrDataUrl}" alt="Scannable Ticket QR Code" />
-                  <div style="font-size: 9px; font-weight: 800; margin-top: 4px; color: #000000; letter-spacing: 0.5px;">
-                    SCAN FOR TICKET DETAILS
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
+    // Holder bar
+    const holderBar = doc.createElement('div');
+    holderBar.className = 'holder-bar';
+    const holderLeft = doc.createElement('div');
+    const holderLabel = doc.createElement('span');
+    holderLabel.setAttribute('style', 'color: #64748b; font-size: 11px; font-weight: 800; text-transform: uppercase;');
+    holderLabel.textContent = 'Ticket Holder';
+    const holderName = doc.createElement('div');
+    holderName.setAttribute('style', 'font-weight: 800; font-size: 14px; color: #0f172a;');
+    holderName.textContent = `${userName} (${userEmail})`;
+    holderLeft.appendChild(holderLabel);
+    holderLeft.appendChild(holderName);
+
+    const verifiedBadge = doc.createElement('div');
+    verifiedBadge.setAttribute('style', 'background: #10b981; color: #ffffff; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 800;');
+    verifiedBadge.textContent = 'VERIFIED PASS';
+    holderBar.appendChild(holderLeft);
+    holderBar.appendChild(verifiedBadge);
+    body.appendChild(holderBar);
+
+    // Movie grid
+    const movieGrid = doc.createElement('div');
+    movieGrid.className = 'movie-grid';
+
+    const poster = doc.createElement('img');
+    poster.className = 'poster-img';
+    const safePosterUrl = movie?.posterUrl && (movie.posterUrl.startsWith('https://') || movie.posterUrl.startsWith('http://'))
+      ? movie.posterUrl
+      : 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&q=80';
+    poster.src = safePosterUrl;
+    poster.alt = movie?.title || 'Movie Poster';
+    movieGrid.appendChild(poster);
+
+    const movieDetails = doc.createElement('div');
+    const genreDiv = doc.createElement('div');
+    genreDiv.setAttribute('style', 'color: #e50914; font-size: 11px; font-weight: 800; text-transform: uppercase;');
+    genreDiv.textContent = `${movie?.genre || ''} • ${movie?.language || ''}`;
+
+    const titleDiv = doc.createElement('div');
+    titleDiv.className = 'movie-title';
+    titleDiv.textContent = movie?.title || 'Movie';
+
+    const locDiv = doc.createElement('div');
+    locDiv.setAttribute('style', 'font-size: 13px; font-weight: 700; color: #1e293b;');
+    locDiv.textContent = `📍 ${theater?.name || 'CineBook Theater'} (${theater?.city || ''})`;
+
+    const addrDiv = doc.createElement('div');
+    addrDiv.setAttribute('style', 'font-size: 11px; color: #64748b; margin-top: 2px;');
+    addrDiv.textContent = theater?.address || '';
+
+    const pillsDiv = doc.createElement('div');
+    pillsDiv.setAttribute('style', 'margin-top: 8px;');
+
+    const pillDate = doc.createElement('span');
+    pillDate.className = 'pill';
+    pillDate.textContent = `📅 ${showDate}`;
+
+    const pillTime = doc.createElement('span');
+    pillTime.className = 'pill';
+    pillTime.textContent = `⏰ ${showTime}`;
+
+    const pillScreen = doc.createElement('span');
+    pillScreen.className = 'pill';
+    pillScreen.setAttribute('style', 'background: #fee2e2; color: #991b1b;');
+    pillScreen.textContent = screen?.name || 'Auditorium 1';
+
+    pillsDiv.appendChild(pillDate);
+    pillsDiv.appendChild(pillTime);
+    pillsDiv.appendChild(pillScreen);
+
+    movieDetails.appendChild(genreDiv);
+    movieDetails.appendChild(titleDiv);
+    movieDetails.appendChild(locDiv);
+    movieDetails.appendChild(addrDiv);
+    movieDetails.appendChild(pillsDiv);
+    movieGrid.appendChild(movieDetails);
+    body.appendChild(movieGrid);
+
+    // Stub line
+    const stub = doc.createElement('div');
+    stub.className = 'stub-line';
+    body.appendChild(stub);
+
+    // Bottom grid
+    const bottomGrid = doc.createElement('div');
+    bottomGrid.className = 'bottom-grid';
+
+    const bLeft = doc.createElement('div');
+    const seatsBox = doc.createElement('div');
+    seatsBox.setAttribute('style', 'background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px; margin-bottom: 8px;');
+    const seatsLabel = doc.createElement('span');
+    seatsLabel.setAttribute('style', 'font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase;');
+    seatsLabel.textContent = 'Reserved Seats';
+    const seatsVal = doc.createElement('div');
+    seatsVal.setAttribute('style', 'font-size: 18px; font-weight: 900; color: #e50914;');
+    seatsVal.textContent = seatsList;
+    seatsBox.appendChild(seatsLabel);
+    seatsBox.appendChild(seatsVal);
+
+    const priceBox = doc.createElement('div');
+    priceBox.setAttribute('style', 'display: flex; justify-content: space-between; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px;');
+    const priceLeft = doc.createElement('div');
+    const paidLabel = doc.createElement('span');
+    paidLabel.setAttribute('style', 'font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase;');
+    paidLabel.textContent = 'Total Paid';
+    const paidVal = doc.createElement('div');
+    paidVal.setAttribute('style', 'font-size: 15px; font-weight: 800; color: #10b981;');
+    paidVal.textContent = `₹${totalRupees}`;
+    priceLeft.appendChild(paidLabel);
+    priceLeft.appendChild(paidVal);
+
+    const priceRight = doc.createElement('div');
+    priceRight.setAttribute('style', 'text-align: right;');
+    const refLabel = doc.createElement('span');
+    refLabel.setAttribute('style', 'font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase;');
+    refLabel.textContent = 'Booking Ref';
+    const refVal = doc.createElement('div');
+    refVal.setAttribute('style', 'font-size: 11px; font-family: monospace; font-weight: 700; color: #0f172a;');
+    refVal.textContent = booking.id ? booking.id.substring(0, 16) : '';
+    priceRight.appendChild(refLabel);
+    priceRight.appendChild(refVal);
+
+    priceBox.appendChild(priceLeft);
+    priceBox.appendChild(priceRight);
+    bLeft.appendChild(seatsBox);
+    bLeft.appendChild(priceBox);
+    bottomGrid.appendChild(bLeft);
+
+    // QR container
+    const qrContainer = doc.createElement('div');
+    qrContainer.className = 'qr-container';
+    const qrImg = doc.createElement('img');
+    qrImg.src = qrDataUrl && qrDataUrl.startsWith('data:image/') ? qrDataUrl : '';
+    qrImg.alt = 'Scannable Ticket QR Code';
+    const qrCaption = doc.createElement('div');
+    qrCaption.setAttribute('style', 'font-size: 9px; font-weight: 800; margin-top: 4px; color: #000000; letter-spacing: 0.5px;');
+    qrCaption.textContent = 'SCAN FOR TICKET DETAILS';
+    qrContainer.appendChild(qrImg);
+    qrContainer.appendChild(qrCaption);
+    bottomGrid.appendChild(qrContainer);
+
+    body.appendChild(bottomGrid);
+    card.appendChild(body);
+    doc.body.appendChild(card);
+    doc.close();
+
     printWindow.focus();
     setTimeout(() => {
       try {
@@ -353,9 +431,6 @@ export const TicketModal: React.FC<TicketModalProps> = ({
     };
 
     setResaleListed(true);
-    setResaleSuccessMsg(
-      `✓ Ticket listed on Fair Exchange at exact face value (₹${totalRupees}). When bought, you will be auto-refunded!`
-    );
     if (onListOnFairExchange) {
       onListOnFairExchange(listing);
     }

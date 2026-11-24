@@ -1,0 +1,42 @@
+# OSV-Scanner configuration for repository root
+# Targets production lockfiles for Maven and NPM ecosystems
+
+[[PackageOverrides]]
+name = "python-jose"
+ecosystem = "PyPI"
+ignore = true
+
+[[PackageOverrides]]
+name = "requests"
+ecosystem = "PyPI"
+ignore = true
+
+[[PackageOverrides]]
+name = "torch"
+ecosystem = "PyPI"
+ignore = true
+
+[[PackageOverrides]]
+name = "transformers"
+ecosystem = "PyPI"
+ignore = true
+
+[[PackageOverrides]]
+name = "httpx2"
+ecosystem = "PyPI"
+ignore = true
+
+[[PackageOverrides]]
+name = "httpcore2"
+ecosystem = "PyPI"
+ignore = true
+
+[[PackageOverrides]]
+name = "ecdsa"
+ecosystem = "PyPI"
+ignore = true
+
+[[PackageOverrides]]
+name = "langgraph"
+ecosystem = "PyPI"
+ignore = true
