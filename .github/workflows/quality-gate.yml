@@ -63,7 +63,13 @@ jobs:
               STATUS=$(echo "$CHECKS_JSON" | jq -r --arg g "$GATE" '.[] | select(.name == $g) | .status' | head -n 1)
               CONCLUSION=$(echo "$CHECKS_JSON" | jq -r --arg g "$GATE" '.[] | select(.name == $g) | .conclusion' | head -n 1)
 
-              if [ -z "$STATUS" ] || [ "$STATUS" = "in_progress" ] || [ "$STATUS" = "queued" ]; then
+              if [ -z "$STATUS" ]; then
+                if [ $ATTEMPT -lt 8 ]; then
+                  PENDING=$((PENDING + 1))
+                else
+                  echo "  ⚪ $GATE: Not triggered for this event (skipping wait)"
+                fi
+              elif [ "$STATUS" = "in_progress" ] || [ "$STATUS" = "queued" ]; then
                 PENDING=$((PENDING + 1))
               elif [ "$CONCLUSION" != "success" ] && [ "$CONCLUSION" != "neutral" ] && [ "$CONCLUSION" != "skipped" ]; then
                 FAILED=$((FAILED + 1))

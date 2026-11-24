@@ -3,14 +3,8 @@ name: AI Service CI
 on:
   push:
     branches: [main, 'feature/**']
-    paths:
-      - 'cinebook-ai-service/**'
-      - '.github/workflows/ai-service-ci.yml'
   pull_request:
     branches: [main]
-    paths:
-      - 'cinebook-ai-service/**'
-      - '.github/workflows/ai-service-ci.yml'
   workflow_dispatch:
 
 permissions:
