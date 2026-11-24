@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cinebook-ai-service
+  namespace: default
+  labels:
+    app.kubernetes.io/name: cinebook-ai-service
+    app.kubernetes.io/part-of: cinebook-platform
+    app.kubernetes.io/component: ai-engine
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: cinebook-ai-service
+  template:
+    metadata:
+      labels:
+        app: cinebook-ai-service
+        app.kubernetes.io/name: cinebook-ai-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "8000"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: ai-service
+          image: ghcr.io/rishiraj0128/cinebook-ai-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              name: http
+          envFrom:
+            - configMapRef:
+                name: cinebook-ai-config
+          env:
+            - name: GROQ_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: cinebook-secrets
+                  key: groq-api-key
+                  optional: true
+            - name: AI_INTERNAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: cinebook-secrets
+                  key: ai-internal-api-key
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1024Mi"
+          # Startup probe allows initial HuggingFace model weight loading
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 30
+          # Liveness probe monitors process viability
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          # Readiness probe checks DB and dependency reachability
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 2

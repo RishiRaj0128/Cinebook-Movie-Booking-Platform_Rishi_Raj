@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: cinebook-ai-service
+  namespace: default
+  labels:
+    app.kubernetes.io/name: cinebook-ai-service
+    app.kubernetes.io/part-of: cinebook-platform
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8000
+      targetPort: 8000
+      name: http
+      protocol: TCP
+  selector:
+    app: cinebook-ai-service
