@@ -1,12 +1,11 @@
-import time
 import uuid
-from datetime import datetime, timezone
 from typing import Optional
 from fastapi import APIRouter, Depends, Path, Query
 from sqlalchemy.orm import Session
 from app.database.connection import get_db
-from app.schemas.recommendation import RecommendationResponse, RecommendationItem
-from app.core.security import get_current_user, AuthenticatedUser, verify_internal_api_key
+from app.schemas.recommendation import RecommendationResponse
+from app.core.security import get_current_user, AuthenticatedUser
+from app.services.recommendation_service import RecommendationService
 
 router = APIRouter(prefix="/recommendations", tags=["Personalized Recommendations"])
 
@@ -21,18 +20,13 @@ def get_recommendations_for_user(
     Candidate generation & personalized ranking pipeline.
     Accessible only to the authenticated user or verified internal service.
     """
-    start_time = time.time()
-    event_id = uuid.uuid4()
+    # Enforce user authorization (users can only query their own recommendations)
+    if user and user.role != "ADMIN" and user.user_id != user_id:
+        # Fall back to user's actual token ID to preserve privacy
+        user_id = user.user_id
 
-    # Recommendations will be generated via recommendation_service in Phase 5
-    recommendations = []
-    execution_time_ms = round((time.time() - start_time) * 1000, 2)
-
-    return RecommendationResponse(
+    return RecommendationService.get_recommendations(
+        db=db,
         user_id=user_id,
-        recommendation_event_id=event_id,
-        recommendations=recommendations,
-        model_version="ranker-v1.0",
-        generated_at=datetime.now(timezone.utc).isoformat(),
-        execution_time_ms=execution_time_ms
+        limit=limit
     )
