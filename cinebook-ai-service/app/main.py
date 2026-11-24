@@ -13,6 +13,7 @@ from app.api.v1.search import router as search_router
 from app.api.v1.recommendations import router as recommendations_router
 from app.api.v1.chat import router as chat_router
 from app.api.v1.feedback import router as feedback_router
+from app.api.v1.memory import router as memory_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -76,6 +77,7 @@ app.include_router(search_router, prefix="/api/v1")
 app.include_router(recommendations_router, prefix="/api/v1")
 app.include_router(chat_router, prefix="/api/v1")
 app.include_router(feedback_router, prefix="/api/v1")
+app.include_router(memory_router, prefix="/api/v1")
 
 @app.get("/")
 def root():
